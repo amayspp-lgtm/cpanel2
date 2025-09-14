@@ -1,7 +1,7 @@
 // api/telegram-webhook.js
 
 import fetch from 'node-fetch';
-import { connectToDatabase } from '../utils/db.js';
+import { connectToDatabase } from '../utils/db.js'; // Pastikan ada .js
 
 // Fungsi Helper untuk Escape HTML
 function escapeHTML(str) {
@@ -18,14 +18,16 @@ function escapeHTML(str) {
 }
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_IDS = process.env.TELEGRAM_CHAT_IDS;
+const TELEGRAM_CHAT_IDS = process.env.TELEGRAM_CHAT_IDS; // Variabel untuk multiple admin IDs
 const VERCEL_BASE_URL = process.env.VERCEL_BASE_URL;
 
 if (!VERCEL_BASE_URL || !VERCEL_BASE_URL.startsWith('http')) {
     console.error("VERCEL_BASE_URL environment variable is missing or invalid. Please set it in Vercel Dashboard (e.g., https://your-project.vercel.app)");
 }
 
+// Pisahkan string TELEGRAM_CHAT_IDS menjadi array, dan trim setiap ID
 const AUTHORIZED_ADMIN_IDS = TELEGRAM_CHAT_IDS ? TELEGRAM_CHAT_IDS.split(',').map(id => id.trim()) : [];
+
 
 export default async function handler(req, res) {
   console.log(`[Webhook] Received ${req.method} request.`);
@@ -41,15 +43,21 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, message: 'No message text or invalid update.' });
   }
 
-  const chatId = message.chat.id;
+  const chatId = message.chat.id; // ID chat/grup tempat pesan dikirim
   const text = message.text;
-  const fromId = message.from.id;
+  const fromId = message.from.id; // ID pengguna yang mengirim pesan
 
+
+  // --- Verifikasi Owner (Mendukung Multi Admin IDs) ---
+  // Periksa apakah fromId (ID pengguna yang mengirim pesan)
+  // ATAU chatId (ID chat/grup, jika pesan datang dari grup)
+  // ada di daftar AUTHORIZED_ADMIN_IDS
   if (!AUTHORIZED_ADMIN_IDS.includes(fromId.toString()) && !AUTHORIZED_ADMIN_IDS.includes(chatId.toString())) {
     console.warn(`[Webhook] Unauthorized access attempt from chatId: ${chatId} (fromId: ${fromId}), text: ${text}`);
     await sendTelegramMessage(chatId, 'Maaf, Anda tidak memiliki izin untuk menggunakan bot ini.');
     return res.status(200).json({ success: false, message: 'Unauthorized user.' });
   }
+  // --- Akhir Verifikasi Owner ---
 
   console.log(`[Webhook] Processing command from authorized user (${chatId}): ${text}`);
 
@@ -75,13 +83,6 @@ Berikut adalah daftar perintah yang bisa Anda gunakan:
 • <code>/removekey [key_yang_ingin_dihapus]</code>
   - Menghapus Access Key tertentu dari database.
   - Contoh: <code>/removekey myCustomKey</code>
-
-⚙️ <b>Manajemen Konfigurasi Panel:</b>
-• <code>/setconfig <tipe_panel> <konfigurasi> <nilai_baru></code>
-  - Mengubah konfigurasi panel (PTLA, PTLC, domain, egg_id, nest_id, loc).
-  - <code><tipe_panel></code>: public atau private
-  - <code><konfigurasi></code>: ptla, ptlc, domain, egg_id, nest_id, atau loc
-  - Contoh: <code>/setconfig public ptla my_new_ptla_key</code>
 
 ------------------------------------------------
 Panel Creator Anda: ${VERCEL_BASE_URL}
@@ -115,7 +116,7 @@ Panel Creator Anda: ${VERCEL_BASE_URL}
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             key: customKey,
-            createdByTelegramId: fromId.toString(),
+            createdByTelegramId: fromId.toString(), // Mengirim fromId sebagai string
             panelTypeRestriction: panelTypeRestriction
         }),
       });
@@ -140,7 +141,7 @@ Panel Creator Anda: ${VERCEL_BASE_URL}
   } else if (text.startsWith('/listkeys')) {
     try {
       console.log("[Webhook] Calling /api/manage-access-keys (GET) for /listkeys.");
-      const listKeysResponse = await fetch(`${VERCEL_BASE_URL}/api/manage-access-keys?requestedByTelegramId=${fromId.toString()}`, {
+      const listKeysResponse = await fetch(`${VERCEL_BASE_URL}/api/manage-access-keys?requestedByTelegramId=${fromId.toString()}`, { // Mengirim fromId sebagai string
         method: 'GET',
       });
       const listKeysData = await listKeysResponse.json();
@@ -178,7 +179,7 @@ Panel Creator Anda: ${VERCEL_BASE_URL}
         const removeKeyResponse = await fetch(`${VERCEL_BASE_URL}/api/manage-access-keys`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key: keyToRemove, deletedByTelegramId: fromId.toString() }),
+          body: JSON.stringify({ key: keyToRemove, deletedByTelegramId: fromId.toString() }), // Mengirim fromId sebagai string
         });
         const removeKeyData = await removeKeyResponse.json();
 
@@ -193,39 +194,8 @@ Panel Creator Anda: ${VERCEL_BASE_URL}
         responseMessage = `Terjadi kesalahan internal saat menghapus Access Key: ${escapeHTML(error.message)}`;
       }
     }
-  } else if (text.startsWith('/setconfig')) {
-    const args = text.substring('/setconfig'.length).trim().split(/\s+/).filter(arg => arg !== '');
-    if (args.length < 3) {
-        responseMessage = 'Format salah. Gunakan: /setconfig <tipe_panel> <konfigurasi> <nilai_baru>\nContoh: /setconfig public ptla my_new_ptla_key';
-    } else {
-        const [panelType, configKey, ...newValueParts] = args;
-        const newValue = newValueParts.join(' ');
-        
-        try {
-            console.log(`[Webhook] Calling /api/set-panel-config (POST) for /setconfig. Panel Type: ${panelType}, Config Key: ${configKey}, New Value: ${newValue}`);
-            const setConfigResponse = await fetch(`${VERCEL_BASE_URL}/api/set-panel-config`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    requestedByTelegramId: fromId.toString(),
-                    panelType: panelType,
-                    configKey: configKey,
-                    newValue: newValue
-                }),
-            });
-            const setConfigData = await setConfigResponse.json();
-
-            if (setConfigData.success) {
-                responseMessage = `✅ Konfigurasi <b>${escapeHTML(configKey.toUpperCase())}</b> untuk panel <b>${escapeHTML(panelType.toUpperCase())}</b> berhasil diubah.`;
-            } else {
-                responseMessage = `❌ Gagal mengubah konfigurasi: ${escapeHTML(setConfigData.message)}`;
-            }
-        } catch (error) {
-            console.error('[Webhook] Error calling set-panel-config API:', error);
-            responseMessage = `Terjadi kesalahan internal saat mengubah konfigurasi: ${escapeHTML(error.message)}`;
-        }
-    }
   }
+  // Tidak ada else if untuk /setstatus dan /createadmin di versi ini
   else {
       console.log(`[Webhook] Unrecognized command: ${text}`);
       responseMessage = 'Perintah tidak dikenal. Ketik /start untuk melihat daftar perintah.';
@@ -258,4 +228,4 @@ async function sendTelegramMessage(chatId, messageText) {
   } catch (error) {
     console.error('Error sending message via Telegram API:', error);
   }
-}
+                                 }

@@ -1,9 +1,8 @@
 // api/create-panel.js
 
 import fetch from 'node-fetch'; 
-import { connectToDatabase } from '../utils/db.js'; // Pastikan ada .js
+import { connectToDatabase } from '../utils/db.js';
 
-// Fungsi Helper untuk Escape HTML
 function escapeHTML(str) {
   return str.replace(/[&<>"']/g, function(tag) {
     var charsToReplace = {
@@ -17,22 +16,7 @@ function escapeHTML(str) {
   });
 }
 
-const PUBLIC_PANEL_DOMAIN = process.env.VITE_PUBLIC_PANEL_DOMAIN; 
-const PUBLIC_PANEL_PTLA = process.env.VITE_PUBLIC_PANEL_PTLA;
-const PUBLIC_PANEL_PTLC = process.env.VITE_PUBLIC_PANEL_PTLC;
-const PUBLIC_PANEL_EGG_ID = process.env.VITE_PUBLIC_PANEL_EGG_ID;
-const PUBLIC_PANEL_NEST_ID = process.env.VITE_PUBLIC_PANEL_NEST_ID;
-const PUBLIC_PANEL_LOC = process.env.VITE_PUBLIC_PANEL_LOC;
-
-const PRIVATE_PANEL_DOMAIN = process.env.VITE_PRIVATE_PANEL_DOMAIN;
-const PRIVATE_PANEL_PTLA = process.env.VITE_PRIVATE_PANEL_PTLA;
-const PRIVATE_PANEL_PTLC = process.env.VITE_PRIVATE_PANEL_PTLC;
-const PRIVATE_PANEL_EGG_ID = process.env.VITE_PRIVATE_PANEL_EGG_ID;
-const PRIVATE_PANEL_NEST_ID = process.env.VITE_PRIVATE_PANEL_NEST_ID;
-const PRIVATE_PANEL_LOC = process.env.VITE_PRIVATE_PANEL_LOC;
-
 const BASE_URL_PTERODACTYL_API_TEMPLATE = process.env.VITE_BASE_URL_PTERODACTYL_API;
-
 const VERCEL_BASE_URL = process.env.VERCEL_BASE_URL; 
 if (!VERCEL_BASE_URL || !VERCEL_BASE_URL.startsWith('http')) {
     console.error("VERCEL_BASE_URL environment variable is missing or invalid in create-panel.js. Please set it in Vercel Dashboard (e.g., https://your-project.vercel.app)");
@@ -46,22 +30,22 @@ export default async function handler(req, res) {
 
   const { username, ram, disk, cpu, hostingPackage, panelType, accessKey } = req.query;
 
-  if (!username || !ram || !disk || !cpu || !panelType || !hostingPackage || !accessKey) { // <-- accessKey sekarang wajib
+  if (!username || !ram || !disk || !cpu || !panelType || !hostingPackage || !accessKey) {
     return res.status(400).json({ status: false, message: 'Missing required parameters.' });
   }
 
-  // --- Validasi Access Key dan Batasan Panel ---
+  // Validasi Access Key dan Batasan Panel
+  let foundKey;
   try {
     const db = await connectToDatabase();
     const collection = db.collection('accessKeys');
-    const foundKey = await collection.findOne({ key: accessKey });
+    foundKey = await collection.findOne({ key: accessKey });
 
     if (!foundKey || !foundKey.isActive) {
       return res.status(403).json({ status: false, message: 'Invalid or inactive Access Key.' });
     }
 
-    // Periksa batasan panel
-    const restriction = foundKey.panelTypeRestriction || 'both'; // Default ke 'both' jika tidak ada
+    const restriction = foundKey.panelTypeRestriction || 'both';
     const requestedPanelTypeLower = panelType.toLowerCase();
 
     if (restriction === 'public' && requestedPanelTypeLower === 'private') {
@@ -70,9 +54,7 @@ export default async function handler(req, res) {
     if (restriction === 'private' && requestedPanelTypeLower === 'public') {
       return res.status(403).json({ status: false, message: 'Access Key ini hanya diizinkan untuk membuat panel privat.' });
     }
-    // Jika restriction 'both', maka tidak perlu validasi tambahan
 
-    // Update usageCount
     await collection.updateOne(
       { key: accessKey },
       { $inc: { usageCount: 1 } }
@@ -82,30 +64,20 @@ export default async function handler(req, res) {
     console.error('Error validating access key or updating usage count:', dbError);
     return res.status(500).json({ status: false, message: 'Internal server error during Access Key validation.' });
   }
-  // --- Akhir Validasi Access Key dan Batasan Panel ---
 
-
+  // Ambil konfigurasi dari database
   let currentPanelConfig;
-  if (panelType === 'public') {
-    currentPanelConfig = {
-      domain: PUBLIC_PANEL_DOMAIN,
-      ptla: PUBLIC_PANEL_PTLA,
-      ptlc: PUBLIC_PANEL_PTLC,
-      eggId: PUBLIC_PANEL_EGG_ID,
-      nestId: PUBLIC_PANEL_NEST_ID,
-      loc: PUBLIC_PANEL_LOC
-    };
-  } else if (panelType === 'private') {
-    currentPanelConfig = {
-      domain: PRIVATE_PANEL_DOMAIN,
-      ptla: PRIVATE_PANEL_PTLA,
-      ptlc: PRIVATE_PANEL_PTLC,
-      eggId: PRIVATE_PANEL_EGG_ID,
-      nestId: PRIVATE_PANEL_NEST_ID,
-      loc: PRIVATE_PANEL_LOC
-    };
-  } else {
-    return res.status(400).json({ status: false, message: 'Invalid panel type provided.' });
+  try {
+    const db = await connectToDatabase();
+    const configCollection = db.collection('panelConfigs');
+    currentPanelConfig = await configCollection.findOne({ panelType: panelType.toLowerCase() });
+
+    if (!currentPanelConfig) {
+      return res.status(404).json({ status: false, message: `Konfigurasi untuk tipe panel '${panelType}' tidak ditemukan di database.` });
+    }
+  } catch (configError) {
+    console.error('Error fetching panel configuration from database:', configError);
+    return res.status(500).json({ status: false, message: 'Internal server error: Failed to load panel configuration.' });
   }
 
   const finalPteroApiUrl = BASE_URL_PTERODACTYL_API_TEMPLATE
@@ -113,20 +85,19 @@ export default async function handler(req, res) {
     .replace('ram=', `ram=${ram}`)
     .replace('disk=', `disk=${disk}`)
     .replace('cpu=', `cpu=${cpu}`)
-    .replace('eggid=', `eggid=${currentPanelConfig.eggId}`)
-    .replace('nestid=', `nestid=${currentPanelConfig.nestId}`)
+    .replace('eggid=', `eggid=${currentPanelConfig.egg_id}`)
+    .replace('nestid=', `nestid=${currentPanelConfig.nest_id}`)
     .replace('loc=', `loc=${currentPanelConfig.loc}`)
     .replace('domain=', `domain=${encodeURIComponent(currentPanelConfig.domain)}`)
-    .replace('ptla=', `ptla=${currentPanelConfig.ptla}`) 
-    .replace('ptlc=', `ptlc=${currentPanelConfig.ptlc}`); 
+    .replace('ptla=', `ptla=${currentPanelConfig.ptla}`)
+    .replace('ptlc=', `ptlc=${currentPanelConfig.ptlc}`);
 
   try {
     const apiResponse = await fetch(finalPteroApiUrl);
     const apiData = await apiResponse.json();
 
     if (apiResponse.ok && apiData.status) {
-      // --- Kirim Notifikasi Telegram setelah panel berhasil dibuat ---
-      const accessKeyUsed = escapeHTML(accessKey || 'Tidak Diketahui'); 
+      const accessKeyUsed = escapeHTML(accessKey || 'Tidak Diketahui');
       const escapedUsername = escapeHTML(apiData.result.username);
       const escapedPassword = escapeHTML(apiData.result.password);
       const escapedDomain = escapeHTML(apiData.result.domain);
@@ -163,7 +134,6 @@ Server ID: ${apiData.result.id_server}
       .catch(notifError => {
           console.error('Error calling Telegram notification API:', notifError);
       });
-      // --- Akhir Notifikasi Telegram ---
 
       res.status(200).json(apiData);
     } else {
