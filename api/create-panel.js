@@ -1,7 +1,16 @@
 // api/create-panel.js
 
-import fetch from 'node-fetch'; 
+import fetch from 'node-fetch';
 import { connectToDatabase } from '../utils/db.js';
+
+// Daftar pesan kesalahan yang bervariasi
+const errorMessages = [
+    'Sistem sedang sibuk. Silakan coba lagi nanti.',
+    'Terlalu banyak permintaan dalam waktu singkat. Coba lagi setelah beberapa saat.',
+    'Terjadi kesalahan saat membuat panel. Silakan coba lagi nanti.',
+    'Permintaan Anda tidak dapat diproses saat ini. Mohon tunggu dan coba lagi.',
+    'Penggunaan berlebihan terdeteksi. Silakan gunakan Access Key Anda dengan wajar.'
+];
 
 function escapeHTML(str) {
   return str.replace(/[&<>"']/g, function(tag) {
@@ -17,7 +26,8 @@ function escapeHTML(str) {
 }
 
 const BASE_URL_PTERODACTYL_API_TEMPLATE = process.env.VITE_BASE_URL_PTERODACTYL_API;
-const VERCEL_BASE_URL = process.env.VERCEL_BASE_URL; 
+const VERCEL_BASE_URL = process.env.VERCEL_BASE_URL;
+
 if (!VERCEL_BASE_URL || !VERCEL_BASE_URL.startsWith('http')) {
     console.error("VERCEL_BASE_URL environment variable is missing or invalid in create-panel.js. Please set it in Vercel Dashboard (e.g., https://your-project.vercel.app)");
 }
@@ -34,12 +44,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ status: false, message: 'Missing required parameters.' });
   }
 
+  // Koneksi database
+  const db = await connectToDatabase();
+  const accessKeyCollection = db.collection('accessKeys');
+  const configCollection = db.collection('panelConfigs');
+
   // Validasi Access Key dan Batasan Panel
   let foundKey;
   try {
-    const db = await connectToDatabase();
-    const collection = db.collection('accessKeys');
-    foundKey = await collection.findOne({ key: accessKey });
+    foundKey = await accessKeyCollection.findOne({ key: accessKey });
 
     if (!foundKey || !foundKey.isActive) {
       return res.status(403).json({ status: false, message: 'Invalid or inactive Access Key.' });
@@ -54,22 +67,82 @@ export default async function handler(req, res) {
     if (restriction === 'private' && requestedPanelTypeLower === 'public') {
       return res.status(403).json({ status: false, message: 'Access Key ini hanya diizinkan untuk membuat panel privat.' });
     }
-
-    await collection.updateOne(
-      { key: accessKey },
-      { $inc: { usageCount: 1 } }
-    );
-
+    
   } catch (dbError) {
-    console.error('Error validating access key or updating usage count:', dbError);
+    console.error('Error validating access key:', dbError);
     return res.status(500).json({ status: false, message: 'Internal server error during Access Key validation.' });
   }
+
+  // --- Logika Pencegahan Acak ---
+  const currentTime = new Date();
+  const recentUsageThreshold = 3; // Batasan: 3 panel dalam 10 menit
+  const sessionTimeoutMin = 5 * 60 * 1000; // Minimal 5 menit
+  const sessionTimeoutMax = 15 * 60 * 1000; // Maksimal 15 menit
+
+  let lastErrorTimestamp = foundKey.lastErrorTimestamp || null;
+  let lastErrorMessage = foundKey.lastErrorMessage || null;
+  let sessionTimeout = foundKey.sessionTimeout || 0; // Waktu timeout yang disimpan
+
+  // Cek apakah masih dalam sesi penolakan yang sama
+  if (lastErrorTimestamp && (currentTime.getTime() - lastErrorTimestamp.getTime() < sessionTimeout)) {
+      console.log(`Pencegahan aktif: Mengembalikan pesan kesalahan yang sama untuk Access Key ${accessKey}.`);
+      return res.status(429).json({ status: false, message: lastErrorMessage });
+  }
+
+  // Hitung jumlah penggunaan dalam 10 menit terakhir
+  const tenMinutesAgo = new Date(currentTime.getTime() - 10 * 60 * 1000);
+  const recentUsageCount = foundKey.usageTimestamps ? foundKey.usageTimestamps.filter(ts => ts.getTime() > tenMinutesAgo.getTime()).length : 0;
+  
+  // Lakukan pengecekan pencegahan acak
+  if (recentUsageCount >= recentUsageThreshold) {
+      const randomProbability = Math.random();
+      const rejectionProbability = 0.7; // 70% kemungkinan ditolak jika melewati ambang batas
+      
+      if (randomProbability < rejectionProbability) {
+          // Pilih pesan kesalahan acak
+          const randomErrorIndex = Math.floor(Math.random() * errorMessages.length);
+          const selectedErrorMessage = errorMessages[randomErrorIndex];
+          
+          // Tentukan waktu timeout acak
+          const randomTimeout = Math.floor(Math.random() * (sessionTimeoutMax - sessionTimeoutMin)) + sessionTimeoutMin;
+          
+          // Simpan pesan kesalahan dan timestamp ke database
+          await accessKeyCollection.updateOne(
+              { key: accessKey },
+              { 
+                $set: { 
+                  lastErrorTimestamp: currentTime, 
+                  lastErrorMessage: selectedErrorMessage,
+                  sessionTimeout: randomTimeout
+                } 
+              }
+          );
+
+          console.log(`Pencegahan acak aktif: Menolak permintaan dari Access Key ${accessKey} dengan pesan: "${selectedErrorMessage}".`);
+          return res.status(429).json({ status: false, message: selectedErrorMessage });
+      }
+  }
+
+  // --- Akhir Logika Pencegahan Acak ---
+
+  // Update usageCount dan usageTimestamps
+  await accessKeyCollection.updateOne(
+      { key: accessKey },
+      { 
+          $inc: { usageCount: 1 }, 
+          $push: { 
+              usageTimestamps: { 
+                  $each: [currentTime], 
+                  $slice: -20 // Batasi array agar hanya menyimpan 20 timestamp terakhir
+              } 
+          },
+          $unset: { lastErrorTimestamp: "", lastErrorMessage: "", sessionTimeout: "" } // Hapus data sesi penolakan
+      }
+  );
 
   // Ambil konfigurasi dari database
   let currentPanelConfig;
   try {
-    const db = await connectToDatabase();
-    const configCollection = db.collection('panelConfigs');
     currentPanelConfig = await configCollection.findOne({ panelType: panelType.toLowerCase() });
 
     if (!currentPanelConfig) {
