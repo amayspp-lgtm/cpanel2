@@ -77,10 +77,10 @@ Berikut adalah daftar perintah yang bisa Anda gunakan:
   - Contoh: <code>/removekey myCustomKey</code>
 
 ⚙️ <b>Manajemen Konfigurasi Panel:</b>
-• <code>/setconfig <tipe_panel> <konfigurasi> <nilai_baru></code>
+• <code>/setconfig &lt;tipe_panel&gt; &lt;konfigurasi&gt; &lt;nilai_baru&gt;</code>
   - Mengubah konfigurasi panel (PTLA, PTLC, domain, egg_id, nest_id, loc).
-  - <code><tipe_panel></code>: public atau private
-  - <code><konfigurasi></code>: ptla, ptlc, domain, egg_id, nest_id, atau loc
+  - <code>&lt;tipe_panel&gt;</code>: public atau private
+  - <code>&lt;konfigurasi&gt;</code>: ptla, ptlc, domain, egg_id, nest_id, atau loc
   - Contoh: <code>/setconfig public ptla my_new_ptla_key</code>
 
 ------------------------------------------------
@@ -196,7 +196,7 @@ Panel Creator Anda: ${VERCEL_BASE_URL}
   } else if (text.startsWith('/setconfig')) {
     const args = text.substring('/setconfig'.length).trim().split(/\s+/).filter(arg => arg !== '');
     if (args.length < 3) {
-        responseMessage = 'Format salah. Gunakan: /setconfig <tipe_panel> <konfigurasi> <nilai_baru>\nContoh: /setconfig public ptla my_new_ptla_key';
+        responseMessage = 'Format salah. Gunakan: /setconfig &lt;tipe_panel&gt; &lt;konfigurasi&gt; &lt;nilai_baru&gt;\nContoh: <code>/setconfig public ptla my_new_ptla_key</code>';
     } else {
         const [panelType, configKey, ...newValueParts] = args;
         const newValue = newValueParts.join(' ');
