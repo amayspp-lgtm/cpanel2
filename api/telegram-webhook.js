@@ -83,8 +83,14 @@ Berikut adalah daftar perintah yang bisa Anda gunakan:
   - <code>&lt;konfigurasi&gt;</code>: ptla, ptlc, domain, egg_id, nest_id, atau loc
   - Contoh: <code>/setconfig public ptla my_new_ptla_key</code>
 
-------------------------------------------------
-Panel Creator Anda: ${VERCEL_BASE_URL}
+🛡️ <b>Manajemen Ban Access Key:</b>
+• <code>/ban &lt;key&gt; &lt;durasi&gt; &lt;alasan&gt;</code>
+  - Ban Access Key untuk durasi tertentu (1h, 1d, 1w) atau permanen (permanent).
+  - Contoh: <code>/ban myCustomKey 1d spam</code>
+  - Contoh: <code>/ban myCustomKey permanent spam</code>
+• <code>/unban &lt;key&gt;</code>
+  - Hapus ban dari Access Key.
+  - Contoh: <code>/unban myCustomKey</code>
 `;
   } else if (text.startsWith('/addkey')) {
     const args = text.substring('/addkey'.length).trim().split(/\s+/).filter(arg => arg !== '');
@@ -114,6 +120,7 @@ Panel Creator Anda: ${VERCEL_BASE_URL}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+            action: 'addkey',
             key: customKey,
             createdByTelegramId: fromId.toString(),
             panelTypeRestriction: panelTypeRestriction
@@ -150,6 +157,7 @@ Panel Creator Anda: ${VERCEL_BASE_URL}
         listKeysData.keys.forEach((k, index) => {
           responseMessage += `<b>${index + 1}.</b> <code>${escapeHTML(k.key)}</code>\n`;
           responseMessage += `   Status: <b>${k.isActive ? 'Aktif ✅' : 'Nonaktif ❌'}</b>\n`;
+          responseMessage += `   Ban: <b>${k.isBanned ? 'Terban 🚫' : 'Aman ✅'}</b>\n`;
           responseMessage += `   Batasan: <b>${escapeHTML(k.panelTypeRestriction || 'both')}</b>\n`;
           responseMessage += `   Dibuat: ${escapeHTML(k.createdAt.split('T')[0])}\n`;
           responseMessage += `   Digunakan: ${k.usageCount} kali\n`;
@@ -224,6 +232,55 @@ Panel Creator Anda: ${VERCEL_BASE_URL}
             console.error('[Webhook] Error calling set-panel-config API:', error);
             responseMessage = `Terjadi kesalahan internal saat mengubah konfigurasi: ${escapeHTML(error.message)}`;
         }
+    }
+  } else if (text.startsWith('/ban')) {
+    const args = text.substring('/ban'.length).trim().split(' ');
+    if (args.length < 2) {
+      responseMessage = 'Format salah. Contoh: <code>/ban &lt;key&gt; 1d &lt;alasan&gt;</code>';
+    } else {
+      const keyToBan = args[0];
+      const duration = args[1];
+      const reason = args.slice(2).join(' ') || 'Tidak ada alasan.';
+
+      try {
+        const banResponse = await fetch(`${VERCEL_BASE_URL}/api/manage-access-keys`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'ban',
+            key: keyToBan,
+            duration: duration,
+            reason: reason,
+            createdByTelegramId: fromId.toString()
+          }),
+        });
+        const banData = await banResponse.json();
+        responseMessage = banData.success ? `✅ ${banData.message}` : `❌ Gagal: ${banData.message}`;
+      } catch (error) {
+        responseMessage = `❌ Kesalahan API: ${error.message}`;
+      }
+    }
+  } else if (text.startsWith('/unban')) {
+    const args = text.substring('/unban'.length).trim().split(' ');
+    if (args.length === 0 || !args[0]) {
+      responseMessage = 'Format salah. Contoh: <code>/unban &lt;key&gt;</code>';
+    } else {
+      const keyToUnban = args[0];
+      try {
+        const unbanResponse = await fetch(`${VERCEL_BASE_URL}/api/manage-access-keys`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'unban',
+            key: keyToUnban,
+            createdByTelegramId: fromId.toString()
+          }),
+        });
+        const unbanData = await unbanResponse.json();
+        responseMessage = unbanData.success ? `✅ ${unbanData.message}` : `❌ Gagal: ${unbanData.message}`;
+      } catch (error) {
+        responseMessage = `❌ Kesalahan API: ${error.message}`;
+      }
     }
   }
   else {

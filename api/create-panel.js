@@ -49,15 +49,50 @@ export default async function handler(req, res) {
   const accessKeyCollection = db.collection('accessKeys');
   const configCollection = db.collection('panelConfigs');
 
-  // Validasi Access Key dan Batasan Panel
+  const userIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+  // --- LOGIKA UTAMA: Pengecekan Status Ban pada Access Key ---
   let foundKey;
   try {
     foundKey = await accessKeyCollection.findOne({ key: accessKey });
 
-    if (!foundKey || !foundKey.isActive) {
-      return res.status(403).json({ status: false, message: 'Invalid or inactive Access Key.' });
+    if (!foundKey) {
+      return res.status(403).json({ status: false, message: 'Access Key tidak ditemukan.' });
     }
 
+    // Periksa status ban Access Key
+    if (foundKey.isBanned) {
+        const isPermanent = foundKey.banDetails.isPermanent;
+        const isExpired = !isPermanent && foundKey.banDetails.expiresAt && foundKey.banDetails.expiresAt < new Date();
+
+        if (!isExpired) {
+            // Access Key diban, kirim respons dengan detail ban
+            const responseData = {
+                status: false,
+                message: 'Access Key Anda telah diblokir.',
+                banDetails: {
+                    reason: foundKey.banDetails.reason,
+                    bannedAt: foundKey.banDetails.bannedAt.toISOString(),
+                    isPermanent: isPermanent,
+                    expiresAt: isPermanent ? 'Permanen' : foundKey.banDetails.expiresAt.toISOString()
+                }
+            };
+            return res.status(403).json(responseData);
+        } else {
+            // Hapus ban yang sudah kedaluwarsa
+            await accessKeyCollection.updateOne(
+                { key: accessKey },
+                { $set: { isBanned: false }, $unset: { banDetails: "" } }
+            );
+        }
+    }
+    
+    // Periksa status aktif
+    if (!foundKey.isActive) {
+      return res.status(403).json({ status: false, message: 'Access Key tidak aktif.' });
+    }
+
+    // Periksa batasan panel
     const restriction = foundKey.panelTypeRestriction || 'both';
     const requestedPanelTypeLower = panelType.toLowerCase();
 
@@ -72,6 +107,9 @@ export default async function handler(req, res) {
     console.error('Error validating access key:', dbError);
     return res.status(500).json({ status: false, message: 'Internal server error during Access Key validation.' });
   }
+  
+  // --- Akhir Logika Pengecekan Ban ---
+
 
   // --- Logika Pencegahan Acak ---
   const currentTime = new Date();
@@ -81,7 +119,7 @@ export default async function handler(req, res) {
 
   let lastErrorTimestamp = foundKey.lastErrorTimestamp || null;
   let lastErrorMessage = foundKey.lastErrorMessage || null;
-  let sessionTimeout = foundKey.sessionTimeout || 0; // Waktu timeout yang disimpan
+  let sessionTimeout = foundKey.sessionTimeout || 0;
 
   // Cek apakah masih dalam sesi penolakan yang sama
   if (lastErrorTimestamp && (currentTime.getTime() - lastErrorTimestamp.getTime() < sessionTimeout)) {
@@ -133,7 +171,7 @@ export default async function handler(req, res) {
           $push: { 
               usageTimestamps: { 
                   $each: [currentTime], 
-                  $slice: -20 // Batasi array agar hanya menyimpan 20 timestamp terakhir
+                  $slice: -20
               } 
           },
           $unset: { lastErrorTimestamp: "", lastErrorMessage: "", sessionTimeout: "" } // Hapus data sesi penolakan
@@ -184,6 +222,7 @@ export default async function handler(req, res) {
 ⚙️ Tipe Panel: <b>${panelType.toUpperCase()}</b>
 🔗 Domain: ${escapedDomain}
 ------------------------------
+<b>IP Pengguna:</b> <code>${userIp}</code>
 <b>Access Key Digunakan:</b> <code>${accessKeyUsed}</code>
 ID User: ${apiData.result.id_user}
 Server ID: ${apiData.result.id_server}
