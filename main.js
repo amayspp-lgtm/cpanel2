@@ -2,19 +2,10 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- KONFIGURASI PENTING UNTUK CLIENT-SIDE (tidak sensitif) ---
-    // WEBSITE_ACCESS_KEY masih di frontend untuk validasi awal jika diperlukan.
-    // Tetapi validasi utamanya sebaiknya juga dilakukan di serverless function.
-    const WEBSITE_ACCESS_KEY = import.meta.env.VITE_WEBSITE_ACCESS_KEY;
-
-    // Flags untuk mengaktifkan/menonaktifkan opsi panel di UI (tidak sensitif)
     const IS_PUBLIC_PANEL_ENABLED = import.meta.env.VITE_IS_PUBLIC_PANEL_ENABLED === 'true';
     const IS_PRIVATE_PANEL_ENABLED = import.meta.env.VITE_IS_PRIVATE_PANEL_ENABLED === 'true';
-
-    // URL ke Serverless Function Anda di Vercel (ini adalah path relatif)
-    // Vercel otomatis akan me-route '/api/create-panel' ke file 'api/create-panel.js'
     const YOUR_VERCEL_API_ENDPOINT = '/api/create-panel';
     
-    // Harga dan Spec Paket (tidak sensitif, bisa tetap di frontend)
     const PACKAGES = {
         "1gb": { ram: 1024, disk: 1024, cpu: 100, name: "1 GB" },
         "2gb": { ram: 2048, disk: 2048, cpu: 100, name: "2 GB" },
@@ -28,17 +19,23 @@ document.addEventListener('DOMContentLoaded', () => {
         "10gb": { ram: 10240, disk: 10240, cpu: 200, name: "10 GB" },
         "unlimited": { ram: 0, disk: 0, cpu: 0, name: "Unlimited" }
     };
-    // --- AKHIR KONFIGURASI CLIENT-SIDE ---
-
 
     const createPanelForm = document.getElementById('createPanelForm');
     const createButton = document.getElementById('createButton');
+    const createButtonText = createButton.querySelector('span:first-child');
     const responseMessageDiv = document.getElementById('responseMessage');
     const loadingSpinner = document.getElementById('loadingSpinner');
+    const progressBar = createButton.querySelector('.loading-progress-bar');
     const toastContainer = document.getElementById('toast-notification-container');
     const panelTypeSelect = document.getElementById('panelType');
+    
+    const banModal = document.getElementById('banModal');
+    const closeBanModalBtn = banModal.querySelector('.close-button');
+    const banReason = document.getElementById('banReason');
+    const banTime = document.getElementById('banTime');
+    const contactAdmin = document.getElementById('contactAdmin');
 
-    // --- Fungsi Utility (Tidak ada perubahan) ---
+    // --- Fungsi Utility (sudah ada) ---
     function showMainMessage(type, messageHTML) {
         responseMessageDiv.className = type; 
         responseMessageDiv.innerHTML = messageHTML;
@@ -80,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function populatePanelTypeDropdown() {
         panelTypeSelect.innerHTML = '<option value="" disabled selected>Pilih Tipe Panel</option>';
-
+        
         let optionsAdded = 0;
         if (IS_PUBLIC_PANEL_ENABLED) {
             const publicOption = document.createElement('option');
@@ -113,96 +110,121 @@ document.addEventListener('DOMContentLoaded', () => {
 
     populatePanelTypeDropdown();
 
+    // --- Logika untuk Menampilkan Modal Ban ---
+    function showBanModal(banDetails) {
+        const bannedDate = new Date(banDetails.bannedAt).toLocaleString('id-ID');
+        
+        banReason.innerHTML = `<strong>Alasan:</strong> ${banDetails.reason}`;
+        
+        if (banDetails.isPermanent) {
+            banTime.innerHTML = `<strong>Durasi:</strong> Permanen`;
+        } else {
+            const unbanDate = new Date(banDetails.expiresAt).toLocaleString('id-ID');
+            banTime.innerHTML = `<strong>Berakhir Pada:</strong> ${unbanDate}`;
+        }
+        
+        contactAdmin.innerHTML = `Jika Anda merasa ini adalah kesalahan, silakan hubungi <a href="#">Admin</a> untuk banding.`;
+        
+        banModal.style.display = 'flex';
+    }
+
+    closeBanModalBtn.addEventListener('click', () => {
+        banModal.style.display = 'none';
+    });
+
+    // Tutup modal jika overlay diklik
+    window.addEventListener('click', (event) => {
+        if (event.target === banModal) {
+            banModal.style.display = 'none';
+        }
+    });
+
     createPanelForm.addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        createButton.textContent = 'Creating Panel'; 
         createButton.disabled = true;
-        loadingSpinner.style.display = 'flex'; 
-        responseMessageDiv.innerHTML = ''; 
-        responseMessageDiv.className = ''; 
+        createButton.classList.add('loading');
+        createButtonText.textContent = 'MEMBUAT PANEL';
+        loadingSpinner.style.display = 'flex';
+        progressBar.style.width = '100%';
+        progressBar.style.opacity = '1';
+
+        responseMessageDiv.innerHTML = '';
+        responseMessageDiv.className = '';
 
         const accessKey = document.getElementById('accessKey').value;
         const selectedPanelType = panelTypeSelect.value;
         const username = document.getElementById('username').value;
         const hostingPackage = document.getElementById('hostingPackage').value;
 
-        // --- Validasi Access Key (di frontend) ---
-        // Jika validasi ini lolos, permintaan akan diteruskan ke serverless function.
-        // Anda BISA memindahkan validasi accessKey ini sepenuhnya ke serverless function
-        // jika tidak ingin accessKey terlihat di frontend sama sekali.
-        if (accessKey !== WEBSITE_ACCESS_KEY) {
-            showToast('error', 'Access Key Salah!');
-            createButton.textContent = 'Create Panel';
-            createButton.disabled = false;
-            loadingSpinner.style.display = 'none';
-            return;
-        }
-        // --- Akhir Validasi Access Key ---
-
-        // --- Validasi Input lainnya (tetap di frontend untuk user experience yang cepat) ---
         if (!selectedPanelType) {
             showToast('error', 'Silakan pilih tipe panel (Public/Private)!');
-            createButton.textContent = 'Create Panel';
             createButton.disabled = false;
+            createButton.classList.remove('loading');
+            createButtonText.textContent = 'CREATE PANEL';
             loadingSpinner.style.display = 'none';
+            progressBar.style.width = '0%';
+            progressBar.style.opacity = '0';
             return;
         }
 
         if (!username || !hostingPackage) {
             showToast('error', 'Username dan Paket Hosting harus diisi!');
-            createButton.textContent = 'Create Panel';
             createButton.disabled = false;
+            createButton.classList.remove('loading');
+            createButtonText.textContent = 'CREATE PANEL';
             loadingSpinner.style.display = 'none';
+            progressBar.style.width = '0%';
+            progressBar.style.opacity = '0';
             return;
         }
 
         const usernameInput = document.getElementById('username');
         if (!usernameInput.checkValidity()) {
             showToast('error', `Username tidak valid: ${usernameInput.title}`);
-            createButton.textContent = 'Create Panel';
             createButton.disabled = false;
+            createButton.classList.remove('loading');
+            createButtonText.textContent = 'CREATE PANEL';
             loadingSpinner.style.display = 'none';
+            progressBar.style.width = '0%';
+            progressBar.style.opacity = '0';
             return;
         }
 
         const selectedPackage = PACKAGES[hostingPackage];
         if (!selectedPackage) {
             showToast('error', 'Pilih paket hosting yang valid.');
-            createButton.textContent = 'Create Panel';
             createButton.disabled = false;
+            createButton.classList.remove('loading');
+            createButtonText.textContent = 'CREATE PANEL';
             loadingSpinner.style.display = 'none';
+            progressBar.style.width = '0%';
+            progressBar.style.opacity = '0';
             return;
         }
 
         const { ram, disk, cpu } = selectedPackage;
         
-        // --- MEMANGGIL SERVERLESS FUNCTION ANDA ---
-        // Kirim semua data yang diperlukan ke serverless function Anda.
-        // Serverless function akan menangani logika pemilihan konfigurasi panel (public/private)
-        // dan penggunaan API key Pterodactyl yang aman.
         const requestParams = new URLSearchParams({
             username: username,
             ram: ram,
             disk: disk,
             cpu: cpu,
-            hostingPackage: hostingPackage, // Kirim ini juga agar serverless tahu paketnya
-            panelType: selectedPanelType, // Penting untuk memilih config di serverless function
-            accessKey: accessKey // Kirim accessKey untuk validasi di serverless function
+            hostingPackage: hostingPackage, 
+            panelType: selectedPanelType, 
+            accessKey: accessKey, 
         }).toString();
 
         const finalRequestUrl = `${YOUR_VERCEL_API_ENDPOINT}?${requestParams}`;
 
         try {
-            // Melakukan panggilan ke serverless function Anda
             const response = await fetch(finalRequestUrl, {
-                method: 'GET', // Serverless function juga akan menerima GET
+                method: 'GET',
             });
 
             const data = await response.json();
 
             if (response.ok && data.status) {
-                // Respons dari serverless function (yang sudah diproses dari API Pterodactyl)
                 const result = data.result;
                 const panelDomainUrl = result.domain; 
 
@@ -245,6 +267,11 @@ Domain: ${panelDomainUrl}
                 createPanelForm.reset(); 
                 showToast('success', 'Panel berhasil dibuat!'); 
 
+            } else if (response.status === 403 && data.banDetails) {
+                // Tangani respons ban
+                showBanModal(data.banDetails);
+                showToast('error', data.message);
+                
             } else {
                 const errorMessage = data.message || 'Terjadi kesalahan saat membuat panel.';
                 showMainMessage('error', `<b>Gagal membuat server!</b><br>Pesan: ${errorMessage}`); 
@@ -255,9 +282,12 @@ Domain: ${panelDomainUrl}
             showMainMessage('error', `Terjadi kesalahan jaringan atau server tidak merespons: ${error.message}.`); 
             showToast('error', 'Kesalahan koneksi Serverless API!'); 
         } finally {
-            createButton.textContent = 'Create Panel';
             createButton.disabled = false;
+            createButton.classList.remove('loading');
+            createButtonText.textContent = 'CREATE PANEL';
             loadingSpinner.style.display = 'none';
+            progressBar.style.width = '0%';
+            progressBar.style.opacity = '0';
         }
     });
 
