@@ -2,10 +2,8 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- KONFIGURASI PENTING UNTUK CLIENT-SIDE (tidak sensitif) ---
-    // Flags untuk mengaktifkan/menonaktifkan opsi panel di UI (tidak sensitif)
     const YOUR_VERCEL_API_ENDPOINT = '/api/create-panel';
     
-    // Harga dan Spec Paket (tidak sensitif, bisa tetap di frontend)
     const PACKAGES = {
         "1gb": { ram: 1024, disk: 1024, cpu: 100, name: "1 GB" },
         "2gb": { ram: 2048, disk: 2048, cpu: 100, name: "2 GB" },
@@ -19,8 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
         "10gb": { ram: 10240, disk: 10240, cpu: 200, name: "10 GB" },
         "unlimited": { ram: 0, disk: 0, cpu: 0, name: "Unlimited" }
     };
-    // --- AKHIR KONFIGURASI CLIENT-SIDE ---
-
 
     const createPanelForm = document.getElementById('createPanelForm');
     const createButton = document.getElementById('createButton');
@@ -37,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const banTime = document.getElementById('banTime');
     const contactAdmin = document.getElementById('contactAdmin');
 
-    // --- Fungsi Utility (sudah ada) ---
     function showMainMessage(type, messageHTML) {
         responseMessageDiv.className = type; 
         responseMessageDiv.innerHTML = messageHTML;
@@ -81,7 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function populatePanelTypeDropdown() {
         panelTypeSelect.innerHTML = '<option value="" disabled selected>Pilih Tipe Panel</option>';
         
-        // Pilihan akan selalu ditambahkan tanpa memeriksa variabel lingkungan
         const publicOption = document.createElement('option');
         publicOption.value = 'public';
         publicOption.textContent = 'Public Panel';
@@ -92,11 +86,9 @@ document.addEventListener('DOMContentLoaded', () => {
         privateOption.textContent = 'Private Panel';
         panelTypeSelect.appendChild(privateOption);
     }
-    // --- End Fungsi Utility ---
 
     populatePanelTypeDropdown();
 
-    // --- Logika untuk Menampilkan Modal Ban ---
     function showBanModal(banDetails) {
         const bannedDate = new Date(banDetails.bannedAt).toLocaleString('id-ID');
         
@@ -118,7 +110,6 @@ document.addEventListener('DOMContentLoaded', () => {
         banModal.style.display = 'none';
     });
 
-    // Tutup modal jika overlay diklik
     window.addEventListener('click', (event) => {
         if (event.target === banModal) {
             banModal.style.display = 'none';
