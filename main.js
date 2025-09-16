@@ -2,10 +2,10 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- KONFIGURASI PENTING UNTUK CLIENT-SIDE (tidak sensitif) ---
-    const IS_PUBLIC_PANEL_ENABLED = import.meta.env.VITE_IS_PUBLIC_PANEL_ENABLED === 'true';
-    const IS_PRIVATE_PANEL_ENABLED = import.meta.env.VITE_IS_PRIVATE_PANEL_ENABLED === 'true';
+    // Flags untuk mengaktifkan/menonaktifkan opsi panel di UI (tidak sensitif)
     const YOUR_VERCEL_API_ENDPOINT = '/api/create-panel';
     
+    // Harga dan Spec Paket (tidak sensitif, bisa tetap di frontend)
     const PACKAGES = {
         "1gb": { ram: 1024, disk: 1024, cpu: 100, name: "1 GB" },
         "2gb": { ram: 2048, disk: 2048, cpu: 100, name: "2 GB" },
@@ -19,6 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
         "10gb": { ram: 10240, disk: 10240, cpu: 200, name: "10 GB" },
         "unlimited": { ram: 0, disk: 0, cpu: 0, name: "Unlimited" }
     };
+    // --- AKHIR KONFIGURASI CLIENT-SIDE ---
+
 
     const createPanelForm = document.getElementById('createPanelForm');
     const createButton = document.getElementById('createButton');
@@ -75,36 +77,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }, duration);
     }
 
+    // Fungsi populatePanelTypeDropdown diubah
     function populatePanelTypeDropdown() {
         panelTypeSelect.innerHTML = '<option value="" disabled selected>Pilih Tipe Panel</option>';
         
-        let optionsAdded = 0;
-        if (IS_PUBLIC_PANEL_ENABLED) {
-            const publicOption = document.createElement('option');
-            publicOption.value = 'public';
-            publicOption.textContent = 'Public Panel';
-            panelTypeSelect.appendChild(publicOption);
-            optionsAdded++;
-        }
+        // Pilihan akan selalu ditambahkan tanpa memeriksa variabel lingkungan
+        const publicOption = document.createElement('option');
+        publicOption.value = 'public';
+        publicOption.textContent = 'Public Panel';
+        panelTypeSelect.appendChild(publicOption);
 
-        if (IS_PRIVATE_PANEL_ENABLED) {
-            const privateOption = document.createElement('option');
-            privateOption.value = 'private';
-            privateOption.textContent = 'Private Panel';
-            panelTypeSelect.appendChild(privateOption);
-            optionsAdded++;
-        }
-
-        if (optionsAdded === 0) {
-            const noOption = document.createElement('option');
-            noOption.value = '';
-            noOption.textContent = 'Tidak ada panel tersedia';
-            noOption.disabled = true;
-            panelTypeSelect.appendChild(noOption);
-            panelTypeSelect.disabled = true;
-        } else if (optionsAdded === 1) {
-            panelTypeSelect.selectedIndex = 1;
-        }
+        const privateOption = document.createElement('option');
+        privateOption.value = 'private';
+        privateOption.textContent = 'Private Panel';
+        panelTypeSelect.appendChild(privateOption);
     }
     // --- End Fungsi Utility ---
 
@@ -268,7 +254,6 @@ Domain: ${panelDomainUrl}
                 showToast('success', 'Panel berhasil dibuat!'); 
 
             } else if (response.status === 403 && data.banDetails) {
-                // Tangani respons ban
                 showBanModal(data.banDetails);
                 showToast('error', data.message);
                 
