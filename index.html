@@ -65,8 +65,12 @@
         }
         /* --- End Ban Popup CSS --- */
         
-        /* --- Maintenance View CSS --- */
+        /* --- Maintenance View CSS (Updated) --- */
         #maintenance-view {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             text-align: center;
             padding: 50px;
             background-color: var(--container-bg);
@@ -80,12 +84,26 @@
             color: var(--secondary-accent);
             text-shadow: 0 0 8px rgba(164, 100, 244, 0.3);
             margin-bottom: 20px;
+            font-size: 2em;
         }
         #maintenance-view p {
             font-size: 1.1em;
             line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .maintenance-icon {
+            font-size: 4em;
+            color: var(--primary-accent);
+            margin-bottom: 20px;
+            animation: pulse 1.5s infinite ease-in-out;
+            text-shadow: var(--neon-glow);
         }
         
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
     </style>
 </head>
 <body>
@@ -97,10 +115,9 @@
         <div class="particle" style="width: 55px; height: 55px; left: 5%; top: 40%;"></div>
     </div>
 
-    <div id="maintenance-view" style="display: none;">
-        <h1>WEBSITE SEDANG DALAM PERBAIKAN</h1>
-        <p>Mohon maaf atas ketidaknyamanannya. Kami sedang melakukan pembaruan dan perbaikan penting untuk meningkatkan layanan kami.</p>
-        <p>Silakan coba kembali dalam beberapa saat.</p>
+    <div id="maintenance-view">
+        <i class="fas fa-tools maintenance-icon"></i> <h1>WEBSITE SEDANG DALAM PERBAIKAN</h1>
+        <p>Mohon maaf atas ketidaknyamanannya. Kami sedang melakukan pembaruan dan perbaikan penting untuk meningkatkan layanan kami. Silakan coba kembali dalam beberapa saat.</p>
     </div>
 
     <div id="main-view" style="display: none;">
