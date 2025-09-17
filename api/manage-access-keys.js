@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     };
 
     if (req.method === 'POST') {
-      const { action, key, createdByTelegramId, panelTypeRestriction, duration, reason } = req.body;
+      const { action, key, createdByTelegramId, panelTypeRestriction, duration, reason, maintenanceMode } = req.body;
 
       if (action === 'ban') {
         if (!authorizeOwner(createdByTelegramId)) {
@@ -86,6 +86,24 @@ export default async function handler(req, res) {
             return res.status(404).json({ success: false, message: 'Access Key tidak ditemukan.' });
         }
 
+      } else if (action === 'set-maintenance-mode') {
+        if (!authorizeOwner(createdByTelegramId)) {
+            return res.status(403).json({ success: false, message: 'Unauthorized.' });
+        }
+
+        const settingsCollection = db.collection('settings');
+        const result = await settingsCollection.updateOne(
+            { settingName: 'maintenanceMode' },
+            { $set: { enabled: maintenanceMode, lastUpdated: new Date() } },
+            { upsert: true }
+        );
+
+        if (result.acknowledged) {
+            const status = maintenanceMode ? 'Aktif' : 'Nonaktif';
+            return res.status(200).json({ success: true, message: `Mode maintenance berhasil diatur ke ${status}.` });
+        } else {
+            return res.status(500).json({ success: false, message: 'Gagal mengatur mode maintenance.' });
+        }
       } else { // Jika action adalah 'addkey' seperti sebelumnya
         const newKey = key || crypto.randomBytes(16).toString('hex');
         const existingKey = await collection.findOne({ key: newKey });
@@ -102,7 +120,7 @@ export default async function handler(req, res) {
         const result = await collection.insertOne({
           key: newKey,
           isActive: true,
-          isBanned: false, // Default: tidak diban
+          isBanned: false,
           createdAt: new Date().toISOString(),
           usageCount: 0,
           createdByTelegramId: createdByTelegramId,

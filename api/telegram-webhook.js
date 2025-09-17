@@ -91,6 +91,12 @@ Berikut adalah daftar perintah yang bisa Anda gunakan:
 • <code>/unban &lt;key&gt;</code>
   - Hapus ban dari Access Key.
   - Contoh: <code>/unban myCustomKey</code>
+  
+🛠️ <b>Mode Maintenance:</b>
+• <code>/maintenance_on</code>
+  - Mengaktifkan mode maintenance pada website.
+• <code>/maintenance_off</code>
+  - Menonaktifkan mode maintenance pada website.
 `;
   } else if (text.startsWith('/addkey')) {
     const args = text.substring('/addkey'.length).trim().split(/\s+/).filter(arg => arg !== '');
@@ -281,6 +287,38 @@ Berikut adalah daftar perintah yang bisa Anda gunakan:
       } catch (error) {
         responseMessage = `❌ Kesalahan API: ${error.message}`;
       }
+    }
+  } else if (text.startsWith('/maintenance_on')) {
+    try {
+      const response = await fetch(`${VERCEL_BASE_URL}/api/manage-access-keys`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'set-maintenance-mode',
+          maintenanceMode: true,
+          createdByTelegramId: fromId.toString(),
+        }),
+      });
+      const data = await response.json();
+      responseMessage = data.success ? `✅ ${data.message}` : `❌ Gagal: ${data.message}`;
+    } catch (error) {
+      responseMessage = `❌ Kesalahan API: ${error.message}`;
+    }
+  } else if (text.startsWith('/maintenance_off')) {
+    try {
+      const response = await fetch(`${VERCEL_BASE_URL}/api/manage-access-keys`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'set-maintenance-mode',
+          maintenanceMode: false,
+          createdByTelegramId: fromId.toString(),
+        }),
+      });
+      const data = await response.json();
+      responseMessage = data.success ? `✅ ${data.message}` : `❌ Gagal: ${data.message}`;
+    } catch (error) {
+      responseMessage = `❌ Kesalahan API: ${error.message}`;
     }
   }
   else {
