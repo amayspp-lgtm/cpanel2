@@ -10,21 +10,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (statusData.maintenanceMode.enabled) {
             mainView.style.display = 'none';
-            maintenanceView.style.display = 'flex'; // Menggunakan flexbox agar konten di tengah
+            maintenanceView.style.display = 'flex';
         } else {
             mainView.style.display = 'block';
             maintenanceView.style.display = 'none';
         }
     } catch (error) {
         console.error("Error fetching site status:", error);
-        // Default ke tampilan normal jika ada masalah
         mainView.style.display = 'block';
         maintenanceView.style.display = 'none';
     }
 
-    // Hanya jalankan kode inisialisasi form jika tidak dalam mode maintenance
     if (mainView.style.display !== 'none') {
         const YOUR_VERCEL_API_ENDPOINT = '/api/create-panel';
+        const CHECK_KEY_API_ENDPOINT = '/api/check-access-key'; // API baru untuk cek status key
         
         const PACKAGES = {
             "1gb": { ram: 1024, disk: 1024, cpu: 100, name: "1 GB" },
@@ -48,12 +47,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const progressBar = createButton.querySelector('.loading-progress-bar');
         const toastContainer = document.getElementById('toast-notification-container');
         const panelTypeSelect = document.getElementById('panelType');
-        
+        const accessKeyInput = document.getElementById('accessKey');
+        const keyStatusMessage = document.getElementById('keyStatusMessage');
+
         const banModal = document.getElementById('banModal');
         const closeBanModalBtn = banModal.querySelector('.close-button');
         const banReason = document.getElementById('banReason');
         const banTime = document.getElementById('banTime');
         const contactAdmin = document.getElementById('contactAdmin');
+        
+        let debounceTimeout = null;
 
         function showMainMessage(type, messageHTML) {
             responseMessageDiv.className = type; 
@@ -125,6 +128,46 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
+        // --- Logika baru untuk real-time feedback Access Key ---
+        accessKeyInput.addEventListener('keyup', () => {
+            clearTimeout(debounceTimeout);
+            const key = accessKeyInput.value.trim();
+
+            if (key.length === 0) {
+                keyStatusMessage.textContent = '';
+                keyStatusMessage.className = 'key-status-message';
+                return;
+            }
+
+            debounceTimeout = setTimeout(async () => {
+                keyStatusMessage.textContent = 'Memeriksa Access Key...';
+                keyStatusMessage.className = 'key-status-message info';
+
+                try {
+                    const response = await fetch(`${CHECK_KEY_API_ENDPOINT}?accessKey=${encodeURIComponent(key)}`);
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        if (data.status === 'active') {
+                            keyStatusMessage.textContent = data.message;
+                            keyStatusMessage.className = 'key-status-message success';
+                        } else if (data.status === 'banned' || data.status === 'inactive' || data.status === 'not-found') {
+                            keyStatusMessage.textContent = data.message;
+                            keyStatusMessage.className = 'key-status-message error';
+                        }
+                    } else {
+                        keyStatusMessage.textContent = 'Gagal memeriksa status kunci.';
+                        keyStatusMessage.className = 'key-status-message error';
+                    }
+                } catch (error) {
+                    console.error('Error checking key:', error);
+                    keyStatusMessage.textContent = 'Terjadi kesalahan jaringan.';
+                    keyStatusMessage.className = 'key-status-message error';
+                }
+            }, 500); // Debounce 500ms
+        });
+        // --- Akhir logika baru ---
+
         createPanelForm.addEventListener('submit', async (event) => {
             event.preventDefault();
 
@@ -145,7 +188,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (!selectedPanelType || !username || !hostingPackage) {
                 showToast('error', 'Semua bidang harus diisi!');
-                // Reset loading
                 createButton.disabled = false;
                 createButton.classList.remove('loading');
                 createButtonText.textContent = 'CREATE PANEL';
@@ -158,7 +200,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const usernameInput = document.getElementById('username');
             if (!usernameInput.checkValidity()) {
                 showToast('error', `Username tidak valid: ${usernameInput.title}`);
-                // Reset loading
                 createButton.disabled = false;
                 createButton.classList.remove('loading');
                 createButtonText.textContent = 'CREATE PANEL';
@@ -171,7 +212,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const selectedPackage = PACKAGES[hostingPackage];
             if (!selectedPackage) {
                 showToast('error', 'Pilih paket hosting yang valid.');
-                // Reset loading
                 createButton.disabled = false;
                 createButton.classList.remove('loading');
                 createButtonText.textContent = 'CREATE PANEL';

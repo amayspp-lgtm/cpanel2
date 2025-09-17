@@ -65,7 +65,7 @@
         }
         /* --- End Ban Popup CSS --- */
         
-        /* --- Maintenance View CSS (Updated) --- */
+        /* --- Maintenance View CSS --- */
         #maintenance-view {
             display: none;
             flex-direction: column;
@@ -90,6 +90,7 @@
             font-size: 1.1em;
             line-height: 1.6;
             margin-bottom: 20px;
+            white-space: pre-wrap;
         }
         .maintenance-icon {
             font-size: 4em;
@@ -104,6 +105,23 @@
             50% { transform: scale(1.1); opacity: 1; }
             100% { transform: scale(1); opacity: 0.8; }
         }
+        /* --- End Maintenance View CSS --- */
+
+        /* --- Key Status Message CSS --- */
+        .key-status-message {
+            font-size: 0.85em;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+        .key-status-message.success {
+            color: var(--success-color);
+        }
+        .key-status-message.error {
+            color: var(--error-color);
+        }
+        .key-status-message.info {
+            color: var(--primary-accent);
+        }
     </style>
 </head>
 <body>
@@ -115,8 +133,9 @@
         <div class="particle" style="width: 55px; height: 55px; left: 5%; top: 40%;"></div>
     </div>
 
-    <div id="maintenance-view">
-        <i class="fas fa-tools maintenance-icon"></i> <h1>WEBSITE SEDANG DALAM PERBAIKAN</h1>
+    <div id="maintenance-view" style="display: none;">
+        <i class="fas fa-tools maintenance-icon"></i>
+        <h1>WEBSITE SEDANG DALAM PERBAIKAN</h1>
         <p>Mohon maaf atas ketidaknyamanannya. Kami sedang melakukan pembaruan dan perbaikan penting untuk meningkatkan layanan kami. Silakan coba kembali dalam beberapa saat.</p>
     </div>
 
@@ -126,7 +145,8 @@
             <form id="createPanelForm">
                 <div class="form-group">
                     <label for="accessKey">Access Key:</label>
-                    <input type="password" id="accessKey" name="accessKey" placeholder="Masukkan Access Key Anda" class="input-glow-border" required>
+                    <input type="text" id="accessKey" name="accessKey" placeholder="Masukkan Access Key Anda" class="input-glow-border" required>
+                    <div id="keyStatusMessage" class="key-status-message"></div>
                 </div>
 
                 <div class="form-group">
