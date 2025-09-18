@@ -15,6 +15,7 @@
     --shadow-color: rgba(0, 0, 0, 0.7);
     --gradient-1: linear-gradient(90deg, #61dafb 0%, #a464f4 100%); /* Adjusted gradient */
     --gradient-2: linear-gradient(90deg, #a464f4 0%, #61dafb 100%); /* Adjusted gradient */
+    --neon-glow: 0 0 5px var(--primary-accent), 0 0 10px var(--primary-accent), 0 0 20px var(--primary-accent);
 }
 
 body {
@@ -72,7 +73,7 @@ body {
     box-shadow: 0 15px 40px var(--shadow-color);
     border: 1px solid var(--border-color);
     width: 100%;
-    max-width: 500px; /* Adjusted max-width for single form */
+    max-width: 500px;
     box-sizing: border-box;
     position: relative;
     z-index: 10;
@@ -81,7 +82,7 @@ body {
     animation: containerEntry 0.6s ease-out forwards 0.3s;
     display: flex;
     flex-direction: column;
-    align-items: center; /* Center content horizontally */
+    align-items: center;
     margin: 20px auto;
 }
 @keyframes containerEntry {
@@ -89,17 +90,17 @@ body {
 }
 
 h1 {
-    font-family: 'Orbitron', sans-serif; /* Futuristic font */
+    font-family: 'Orbitron', sans-serif;
     text-align: center;
     color: var(--primary-accent);
     margin-bottom: 35px;
     font-size: 2.5em;
     font-weight: 700;
     letter-spacing: 0.05em;
-    text-shadow: 0 0 10px rgba(97, 218, 251, 0.4);
+    text-shadow: var(--neon-glow);
 }
         
-.section-title { /* Not used in this version, but kept for consistency */
+.section-title {
     font-family: 'Orbitron', sans-serif;
     color: var(--secondary-accent);
     font-size: 1.8em;
@@ -141,7 +142,7 @@ label {
 
 .input-glow-border:focus {
     border-color: var(--primary-accent);
-    box-shadow: 0 0 0 3px rgba(97, 218, 251, 0.3);
+    box-shadow: var(--neon-glow);
     outline: none;
 }
 
@@ -161,7 +162,7 @@ select.input-glow-border {
 .cyber-button {
     width: 100%;
     padding: 16px;
-    background-image: var(--gradient-1); /* Initial gradient */
+    background-image: var(--gradient-1);
     color: var(--bg-color);
     border: none;
     border-radius: 8px;
@@ -181,7 +182,7 @@ select.input-glow-border {
 }
 
 .cyber-button:hover {
-    background-image: var(--gradient-2); /* Reverse gradient on hover */
+    background-image: var(--gradient-2);
     transform: translateY(-3px);
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
 }
@@ -191,7 +192,7 @@ select.input-glow-border {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
-.cyber-button::before { /* Animated border effect */
+.cyber-button::before {
     content: '';
     position: absolute;
     top: -5px;
@@ -217,34 +218,67 @@ select.input-glow-border {
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+    text-shadow: none;
 }
 .cyber-button:disabled::before {
     animation: none;
     border-image: none;
     border-color: #30363d;
 }
-/* --- End Button Style --- */
 
-/* --- Loader/Spinner Style --- */
+.cyber-button.loading span:first-child {
+    animation: glitchText 0.8s infinite linear alternate-reverse;
+    padding-right: 10px;
+}
+@keyframes glitchText {
+    0% {
+        text-shadow: 0 0 var(--primary-accent), 0 0 var(--secondary-accent);
+        transform: translateX(0);
+    }
+    20% {
+        text-shadow: 2px 0 var(--primary-accent), -2px 0 var(--secondary-accent);
+        transform: translateX(-1px);
+    }
+    40% {
+        text-shadow: -2px 0 var(--primary-accent), 2px 0 var(--secondary-accent);
+        transform: translateX(1px);
+    }
+    60% {
+        text-shadow: 3px 0 var(--primary-accent), -3px 0 var(--secondary-accent);
+        transform: translateX(0);
+    }
+    80% {
+        text-shadow: -1px 0 var(--primary-accent), 1px 0 var(--secondary-accent);
+        transform: translateX(-1px);
+    }
+    100% {
+        text-shadow: 0 0 var(--primary-accent), 0 0 var(--secondary-accent);
+        transform: translateX(0);
+    }
+}
+
 .loader-dots {
     display: flex;
     align-items: center;
     justify-content: center;
     margin-left: 10px;
-    width: 30px; /* Space for dots */
-    height: 18px; /* Height of dots */
-    display: none; /* Hidden by default */
+    width: 30px;
+    height: 18px;
+    display: none;
+    position: relative;
 }
 .dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background-color: white;
+    background: var(--primary-accent);
     margin: 0 3px;
     animation: bounce 0.6s infinite alternate;
+    box-shadow: var(--neon-glow);
 }
 .dot:nth-child(2) {
     animation-delay: 0.2s;
+    background: var(--secondary-accent);
 }
 .dot:nth-child(3) {
     animation-delay: 0.4s;
@@ -252,9 +286,25 @@ select.input-glow-border {
 @keyframes bounce {
     to { transform: translateY(-5px); }
 }
-/* --- End Loader Style --- */
 
-/* --- Message/Result Display --- */
+.loading-progress-bar {
+    width: 0%;
+    height: 4px;
+    background-image: var(--gradient-1);
+    border-radius: 2px;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    transition: width 0.5s ease-out;
+    box-shadow: var(--neon-glow);
+    opacity: 0;
+}
+.cyber-button.loading .loading-progress-bar {
+    width: 100%;
+    opacity: 1;
+}
+
+
 #responseMessage {
     margin-top: 30px;
     padding: 25px;
@@ -393,58 +443,94 @@ select.input-glow-border {
 .contact-message a:hover {
     text-decoration: underline;
 }
-/* --- End Message/Result Display --- */
 
-/* --- Toast Notification --- */
-#toast-notification-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 10000;
-    display: flex;
+/* --- Maintenance View CSS --- */
+#maintenance-view {
+    display: none;
     flex-direction: column;
-    gap: 10px;
-}
-
-.toast-notification {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 50px;
     background-color: var(--container-bg);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 15px 20px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    display: flex;
+    border-radius: 15px;
+    box-shadow: 0 15px 40px var(--shadow-color);
+    position: relative;
+    z-index: 10;
+    max-width: 600px;
+    margin: auto;
+    width: 100%;
+}
+#maintenance-view h1 {
+    color: var(--secondary-accent);
+    text-shadow: 0 0 8px rgba(164, 100, 244, 0.3);
+    margin-bottom: 20px;
+    font-size: 2em;
+}
+#maintenance-view p {
+    font-size: 1.1em;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    white-space: pre-wrap;
+}
+.maintenance-icon {
+    font-size: 4em;
+    color: var(--primary-accent);
+    margin-bottom: 20px;
+    animation: pulse 1.5s infinite ease-in-out;
+    text-shadow: var(--neon-glow);
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.1); opacity: 1; }
+    100% { transform: scale(1); opacity: 0.8; }
+}
+
+/* --- Status View CSS --- */
+#status-view {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    gap: 10px;
-    color: var(--text-color);
-    animation: slideInRight 0.4s ease-out forwards, fadeOut 0.5s ease-in forwards 2.5s;
-    transform: translateX(100%);
-    opacity: 0;
-    min-width: 250px;
-    max-width: 350px;
+    text-align: center;
+    padding: 40px;
+    background-color: var(--container-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 15px;
+    box-shadow: 0 15px 40px var(--shadow-color);
+    position: relative;
+    z-index: 10;
+    max-width: 800px;
+    margin: auto;
+    width: 100%;
+}
+.status-header h2 {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--primary-accent);
+    text-shadow: var(--neon-glow);
+    font-size: 2em;
+    margin-bottom: 10px;
+}
+.status-item {
+    width: 100%;
+    background-color: #11141a;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+.status-item h3 {
+    color: var(--secondary-accent);
+    font-family: 'Orbitron', sans-serif;
+    margin-top: 0;
+}
+.status-item p {
+    margin: 5px 0;
     font-size: 0.9em;
-    font-weight: 500;
 }
-
-.toast-notification.success { border-left: 4px solid var(--success-color); }
-.toast-notification.error { border-left: 4px solid var(--error-color); }
-.toast-notification.info { border-left: 4px solid var(--primary-accent); }
-
-.toast-notification .icon { font-size: 1.4em; line-height: 1; }
-.toast-notification.success .icon { color: var(--success-color); }
-.toast-notification.error .icon { color: var(--error-color); }
-.toast-notification.info .icon { color: var(--primary-accent); }
-.toast-notification .message { flex-grow: 1; }
-
-.toast-notification .close-btn {
-    background: none;
-    border: none;
-    color: var(--placeholder-color);
-    font-size: 1.2em;
-    cursor: pointer;
-    padding: 0 5px;
-    transition: color 0.2s ease;
+.status-item span {
+    font-weight: 600;
 }
-.toast-notification .close-btn:hover { color: var(--text-color); }
-
-@keyframes slideInRight { to { transform: translateX(0); opacity: 1; } }
-@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
