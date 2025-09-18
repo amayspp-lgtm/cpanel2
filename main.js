@@ -379,6 +379,6 @@ Domain: ${panelDomainUrl}
                     showToast('error', 'Gagal menyalin semua!');
                 }
             }
-        });
-    }
+        }
+    });
 });
