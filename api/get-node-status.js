@@ -45,9 +45,11 @@ export default async function handler(req, res) {
         });
         
         console.log(`[Get Node Status] Menerima respons dengan status: ${response.status}`);
-        const data = await response.json();
+        
+        const data = await response.json(); // Coba parsing JSON
+        console.log(`[Get Node Status] Data respons:`, JSON.stringify(data, null, 2));
 
-        if (response.ok) {
+        if (response.ok && data.data) {
           allNodesStatus.push({
             panelType: config.panelType,
             total_nodes: data.meta.pagination.total,
@@ -64,22 +66,24 @@ export default async function handler(req, res) {
             }))
           });
         } else {
-          console.error(`[Get Node Status] Gagal mengambil data node untuk panel ${config.panelType}. Detail error:`, data);
+          // Respons berhasil, tapi mungkin ada error di payload JSON
+          const errorMessage = data.errors && data.errors[0] ? data.errors[0].detail : `Respons Pterodactyl tidak valid (${response.status})`;
+          console.error(`[Get Node Status] Gagal mengambil data node untuk panel ${config.panelType}. Detail error:`, errorMessage);
           allNodesStatus.push({
             panelType: config.panelType,
-            error: data.errors ? data.errors[0].detail : 'Unknown error',
+            error: errorMessage,
           });
         }
       } catch (fetchError) {
-        console.error(`[Get Node Status] Terjadi kesalahan saat fetch API Pterodactyl untuk panel ${config.panelType}:`, fetchError);
+        // Kesalahan saat fetch (e.g., malformed JSON)
+        console.error(`[Get Node Status] Terjadi kesalahan saat parsing respons Pterodactyl untuk panel ${config.panelType}:`, fetchError);
         allNodesStatus.push({
           panelType: config.panelType,
-          error: `Kesalahan jaringan: ${fetchError.message}`,
+          error: `Kesalahan saat memproses respons server.`,
         });
       }
     }
     
-    // Periksa apakah ada konfigurasi yang valid
     if (allNodesStatus.length === 0) {
       return res.status(404).json({ success: false, message: 'Tidak dapat mengambil status dari panel mana pun. Periksa konfigurasi Anda.' });
     }
