@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             maintenanceView.style.display = 'flex';
         } else if (viewToShow === 'status') {
             statusView.style.display = 'flex';
-            fetchNodeStatus(); // Panggil API status setiap kali halaman status ditampilkan
+            fetchNodeStatus();
         }
     }
 
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (error) {
         console.error("Error fetching site status:", error);
-        toggleView('main'); // Tampilkan form jika ada error API
+        toggleView('main');
     }
     
     showStatusButton.addEventListener('click', () => toggleView('status'));
@@ -65,37 +65,50 @@ document.addEventListener('DOMContentLoaded', async () => {
             html = `<p>Tidak ada node yang terdaftar.</p>`;
         } else {
             nodes.forEach(panel => {
-                html += `<div class="status-node-card">`;
+                html += `<div class="status-item">`;
                 html += `<h3>${panel.panelType.toUpperCase()} PANEL</h3>`;
                 if (panel.details && panel.details.length > 0) {
                     panel.details.forEach(node => {
+                        // Perbaikan di sini: Ambil allocated_resources
                         const totalRam = node.attributes.memory;
-                        const usedRam = node.attributes.allocated_memory;
-                        const freeRam = totalRam - usedRam;
+                        const usedRam = node.attributes.allocated_resources.memory;
                         const ramPercent = (usedRam / totalRam) * 100;
                         const ramColorClass = ramPercent > 90 ? 'red' : (ramPercent > 70 ? 'yellow' : '');
 
                         const totalDisk = node.attributes.disk;
-                        const usedDisk = node.attributes.allocated_disk;
-                        const freeDisk = totalDisk - usedDisk;
+                        const usedDisk = node.attributes.allocated_resources.disk;
                         const diskPercent = (usedDisk / totalDisk) * 100;
                         const diskColorClass = diskPercent > 90 ? 'red' : (diskPercent > 70 ? 'yellow' : '');
 
+                        // Perbaikan di sini: Ambil allocated_cpu dan total CPU
+                        const totalCpu = node.attributes.cpu;
+                        const usedCpu = node.attributes.allocated_resources.cpu;
+                        const cpuPercent = (usedCpu / totalCpu) * 100;
+                        const cpuColorClass = cpuPercent > 90 ? 'red' : (cpuPercent > 70 ? 'yellow' : '');
+
                         html += `
-                            <h4>Node: <span>${node.attributes.name}</span></h4>
-                            <p>Lokasi: <span>${node.attributes.location_id}</span></p>
-                            <br>
-                            <p>RAM: <span>${usedRam}MB / ${totalRam}MB</span></p>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar-fill ${ramColorClass}" style="width: ${ramPercent}%;"></div>
+                            <div class="status-node-card">
+                                <div class="node-header">
+                                    <span class="status-indicator"></span>
+                                    <h3>Node: <span>${node.attributes.name}</span></h3>
+                                </div>
+                                <p>Lokasi: <span>${node.attributes.location_id}</span></p>
+                                <br>
+                                <p>RAM: <span>${usedRam}MB / ${totalRam}MB</span></p>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill ${ramColorClass}" style="width: ${ramPercent}%;"></div>
+                                </div>
+                                <br>
+                                <p>Disk: <span>${usedDisk}MB / ${totalDisk}MB</span></p>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill ${diskColorClass}" style="width: ${diskPercent}%;"></div>
+                                </div>
+                                <br>
+                                <p>CPU: <span>${usedCpu}% / ${totalCpu}%</span></p>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill ${cpuColorClass}" style="width: ${cpuPercent}%;"></div>
+                                </div>
                             </div>
-                            <br>
-                            <p>Disk: <span>${usedDisk}MB / ${totalDisk}MB</span></p>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar-fill ${diskColorClass}" style="width: ${diskPercent}%;"></div>
-                            </div>
-                            <br>
-                            <p>CPU: <span>${node.attributes.allocated_cpu}% / ${node.attributes.cpu}%</span></p>
                         `;
                     });
                 } else {
@@ -112,9 +125,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (statusView.style.display !== 'none') {
             fetchNodeStatus();
         }
-    }, 30000); // Perbarui setiap 30 detik
+    }, 30000);
 
-    // --- Sisa kode main.js (Formulir, Popup, dll.) ---
     const YOUR_VERCEL_API_ENDPOINT = '/api/create-panel';
     const CHECK_KEY_API_ENDPOINT = '/api/check-access-key';
     
@@ -434,6 +446,8 @@ Domain: ${panelDomainUrl}
                     showToast('error', 'Gagal menyalin semua!');
                 }
             }
-        }
-    });
+        });
+    }
 });
+}
+Ini mainjs nya lagi
