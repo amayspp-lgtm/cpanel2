@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                         const totalCpu = node.attributes.cpu;
                         const usedCpu = node.attributes.allocated_resources.cpu || 0;
-                        const cpuPercent = (usedCpu / totalCpu) * 100;
+                        const cpuPercent = totalCpu > 0 ? (usedCpu / totalCpu) * 100 : 0;
                         const cpuColorClass = cpuPercent > 90 ? 'red' : (cpuPercent > 70 ? 'yellow' : '');
 
                         html += `
