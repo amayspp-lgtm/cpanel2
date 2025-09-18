@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             maintenanceView.style.display = 'flex';
         } else if (viewToShow === 'status') {
             statusView.style.display = 'flex';
-            fetchNodeStatus();
+            fetchNodeStatus(); // Panggil API status setiap kali halaman status ditampilkan
         }
     }
 
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (error) {
         console.error("Error fetching site status:", error);
-        toggleView('main');
+        toggleView('main'); // Tampilkan form jika ada error API
     }
     
     showStatusButton.addEventListener('click', () => toggleView('status'));
@@ -65,11 +65,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             html = `<p>Tidak ada node yang terdaftar.</p>`;
         } else {
             nodes.forEach(panel => {
-                html += `<div class="status-item">`;
+                html += `<div class="status-node-card">`;
                 html += `<h3>${panel.panelType.toUpperCase()} PANEL</h3>`;
                 if (panel.details && panel.details.length > 0) {
                     panel.details.forEach(node => {
-                        // Perbaikan di sini: Ambil allocated_resources
                         const totalRam = node.attributes.memory;
                         const usedRam = node.attributes.allocated_resources.memory;
                         const ramPercent = (usedRam / totalRam) * 100;
@@ -80,34 +79,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const diskPercent = (usedDisk / totalDisk) * 100;
                         const diskColorClass = diskPercent > 90 ? 'red' : (diskPercent > 70 ? 'yellow' : '');
 
-                        // Perbaikan di sini: Ambil allocated_cpu dan total CPU
                         const totalCpu = node.attributes.cpu;
                         const usedCpu = node.attributes.allocated_resources.cpu;
                         const cpuPercent = (usedCpu / totalCpu) * 100;
                         const cpuColorClass = cpuPercent > 90 ? 'red' : (cpuPercent > 70 ? 'yellow' : '');
 
+
                         html += `
-                            <div class="status-node-card">
-                                <div class="node-header">
-                                    <span class="status-indicator"></span>
-                                    <h3>Node: <span>${node.attributes.name}</span></h3>
-                                </div>
-                                <p>Lokasi: <span>${node.attributes.location_id}</span></p>
-                                <br>
-                                <p>RAM: <span>${usedRam}MB / ${totalRam}MB</span></p>
-                                <div class="progress-bar-container">
-                                    <div class="progress-bar-fill ${ramColorClass}" style="width: ${ramPercent}%;"></div>
-                                </div>
-                                <br>
-                                <p>Disk: <span>${usedDisk}MB / ${totalDisk}MB</span></p>
-                                <div class="progress-bar-container">
-                                    <div class="progress-bar-fill ${diskColorClass}" style="width: ${diskPercent}%;"></div>
-                                </div>
-                                <br>
-                                <p>CPU: <span>${usedCpu}% / ${totalCpu}%</span></p>
-                                <div class="progress-bar-container">
-                                    <div class="progress-bar-fill ${cpuColorClass}" style="width: ${cpuPercent}%;"></div>
-                                </div>
+                            <h4>Node: <span>${node.attributes.name}</span></h4>
+                            <p>Lokasi: <span>${node.attributes.location_id}</span></p>
+                            <br>
+                            <p>RAM: <span>${usedRam}MB / ${totalRam}MB</span></p>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill ${ramColorClass}" style="width: ${ramPercent}%;"></div>
+                            </div>
+                            <br>
+                            <p>Disk: <span>${usedDisk}MB / ${totalDisk}MB</span></p>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill ${diskColorClass}" style="width: ${diskPercent}%;"></div>
+                            </div>
+                            <br>
+                            <p>CPU: <span>${usedCpu}% / ${totalCpu}%</span></p>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill ${cpuColorClass}" style="width: ${cpuPercent}%;"></div>
                             </div>
                         `;
                     });
@@ -120,7 +114,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         statusContent.innerHTML = html;
     }
     
-    // Panggil API status saat halaman status ditampilkan
     setInterval(() => {
         if (statusView.style.display !== 'none') {
             fetchNodeStatus();
@@ -450,3 +443,4 @@ Domain: ${panelDomainUrl}
     }
 });
 }
+Ini mainjs nya lagi
