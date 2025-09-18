@@ -15,7 +15,8 @@ export default async function handler(req, res) {
     const privateConfig = await configCollection.findOne({ panelType: 'private' });
 
     if (!publicConfig && !privateConfig) {
-      return res.status(404).json({ success: false, message: 'Server configurations not found in database.' });
+      console.error('[Get Node Status] Konfigurasi panel tidak ditemukan di database.');
+      return res.status(404).json({ success: false, message: 'Konfigurasi panel tidak ditemukan di database. Harap setel konfigurasi melalui bot Telegram.' });
     }
 
     const configs = [];
@@ -26,46 +27,67 @@ export default async function handler(req, res) {
 
     for (const config of configs) {
       if (!config.domain || !config.ptla) {
-        console.warn(`[Get Node Status] Missing domain or ptla for ${config.panelType} panel. Skipping.`);
+        console.warn(`[Get Node Status] Melewatkan konfigurasi ${config.panelType} karena domain atau PTLA tidak ditemukan.`);
         continue;
       }
-
+      
       const pteroApiUrl = `https://${config.domain}/api/application/nodes`;
-      const response = await fetch(pteroApiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${config.ptla}`,
-          'Content-Type': 'application/json',
-          'Accept': 'Application/vnd.pterodactyl.v1+json',
-        }
-      });
-      const data = await response.json();
+      console.log(`[Get Node Status] Mencoba mengambil data node dari URL: ${pteroApiUrl}`);
 
-      if (response.ok) {
+      try {
+        const response = await fetch(pteroApiUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${config.ptla}`,
+            'Content-Type': 'application/json',
+            'Accept': 'Application/vnd.pterodactyl.v1+json',
+          },
+        });
+        
+        console.log(`[Get Node Status] Menerima respons dengan status: ${response.status}`);
+        const data = await response.json();
+
+        if (response.ok) {
+          allNodesStatus.push({
+            panelType: config.panelType,
+            total_nodes: data.meta.pagination.total,
+            details: data.data.map(node => ({
+              id: node.attributes.id,
+              name: node.attributes.name,
+              location_id: node.attributes.location_id,
+              memory: node.attributes.memory,
+              allocated_memory: node.attributes.allocated_memory,
+              disk: node.attributes.disk,
+              allocated_disk: node.attributes.allocated_disk,
+              cpu: node.attributes.cpu,
+              allocated_cpu: node.attributes.allocated_cpu
+            }))
+          });
+        } else {
+          console.error(`[Get Node Status] Gagal mengambil data node untuk panel ${config.panelType}. Detail error:`, data);
+          allNodesStatus.push({
+            panelType: config.panelType,
+            error: data.errors ? data.errors[0].detail : 'Unknown error',
+          });
+        }
+      } catch (fetchError) {
+        console.error(`[Get Node Status] Terjadi kesalahan saat fetch API Pterodactyl untuk panel ${config.panelType}:`, fetchError);
         allNodesStatus.push({
           panelType: config.panelType,
-          total_nodes: data.meta.pagination.total,
-          details: data.data.map(node => ({
-            id: node.attributes.id,
-            name: node.attributes.name,
-            location_id: node.attributes.location_id,
-            memory: node.attributes.memory,
-            allocated_memory: node.attributes.allocated_memory,
-            disk: node.attributes.disk,
-            allocated_disk: node.attributes.allocated_disk,
-            cpu: node.attributes.cpu,
-            allocated_cpu: node.attributes.allocated_cpu
-          }))
+          error: `Kesalahan jaringan: ${fetchError.message}`,
         });
-      } else {
-        console.error(`Error fetching nodes for ${config.panelType} panel:`, data);
       }
+    }
+    
+    // Periksa apakah ada konfigurasi yang valid
+    if (allNodesStatus.length === 0) {
+      return res.status(404).json({ success: false, message: 'Tidak dapat mengambil status dari panel mana pun. Periksa konfigurasi Anda.' });
     }
 
     return res.status(200).json({ success: true, nodes: allNodesStatus });
 
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('[Get Node Status] Kesalahan fatal di handler:', error);
     return res.status(500).json({ success: false, message: 'Internal Server Error.' });
   }
 }
