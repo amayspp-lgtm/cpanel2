@@ -70,12 +70,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (panel.details && panel.details.length > 0) {
                     panel.details.forEach(node => {
                         const totalRam = node.attributes.memory;
-                        const usedRam = node.attributes.allocated_resources.memory;
+                        const usedRam = node.attributes.allocated_memory;
                         const ramPercent = (usedRam / totalRam) * 100;
                         const ramColorClass = ramPercent > 90 ? 'red' : (ramPercent > 70 ? 'yellow' : '');
 
                         const totalDisk = node.attributes.disk;
-                        const usedDisk = node.attributes.allocated_resources.disk;
+                        const usedDisk = node.attributes.allocated_disk;
                         const diskPercent = (usedDisk / totalDisk) * 100;
                         const diskColorClass = diskPercent > 90 ? 'red' : (diskPercent > 70 ? 'yellow' : '');
 
@@ -439,8 +439,6 @@ Domain: ${panelDomainUrl}
                     showToast('error', 'Gagal menyalin semua!');
                 }
             }
-        });
-    }
+        }
+    });
 });
-}
-Ini mainjs nya lagi
