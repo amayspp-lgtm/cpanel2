@@ -5,61 +5,105 @@ document.addEventListener('DOMContentLoaded', async () => {
     const maintenanceView = document.getElementById('maintenance-view');
     const statusView = document.getElementById('status-view');
     const statusContent = document.getElementById('status-content');
-    
-    // Default: tampilkan halaman status
-    mainView.style.display = 'none';
-    maintenanceView.style.display = 'none';
-    statusView.style.display = 'flex';
+    const showStatusButton = document.getElementById('show-status-button');
+    const backToMainButton = document.getElementById('back-to-main');
 
-    async function fetchServerStatus() {
+    // --- LOGIKA TOGGLE VIEW ---
+    function toggleView(viewToShow) {
+        mainView.style.display = 'none';
+        maintenanceView.style.display = 'none';
+        statusView.style.display = 'none';
+        
+        if (viewToShow === 'main') {
+            mainView.style.display = 'block';
+        } else if (viewToShow === 'maintenance') {
+            maintenanceView.style.display = 'flex';
+        } else if (viewToShow === 'status') {
+            statusView.style.display = 'flex';
+            fetchNodeStatus(); // Panggil API status setiap kali halaman status ditampilkan
+        }
+    }
+
+    // Awal: Cek mode maintenance, jika nonaktif, tampilkan main-view
+    try {
+        const response = await fetch('/api/get-status');
+        const statusData = await response.json();
+        if (statusData.maintenanceMode.enabled) {
+            toggleView('maintenance');
+        } else {
+            toggleView('main');
+        }
+    } catch (error) {
+        console.error("Error fetching site status:", error);
+        toggleView('main'); // Tampilkan form jika ada error API
+    }
+    
+    showStatusButton.addEventListener('click', () => toggleView('status'));
+    backToMainButton.addEventListener('click', () => toggleView('main'));
+
+    // --- LOGIKA STATUS NODE ---
+    async function fetchNodeStatus() {
+        statusContent.innerHTML = `<p>Memuat status node...</p>`;
         try {
-            const response = await fetch('/api/get-server-status');
+            const response = await fetch('/api/get-node-status');
             const data = await response.json();
             
             if (data.success) {
-                renderServerStatus(data.servers);
+                renderNodeStatus(data.nodes);
             } else {
-                statusContent.innerHTML = `<p style="color: var(--error-color);">Gagal mengambil data server: ${data.message}</p>`;
+                statusContent.innerHTML = `<p style="color: var(--error-color);">Gagal mengambil data node: ${data.message}</p>`;
             }
         } catch (error) {
-            console.error('Error fetching server status:', error);
+            console.error('Error fetching node status:', error);
             statusContent.innerHTML = `<p style="color: var(--error-color);">Terjadi kesalahan koneksi.</p>`;
         }
     }
 
-    function renderServerStatus(servers) {
+    function renderNodeStatus(nodes) {
         let html = '';
-        if (servers.length === 0) {
-            html = `<p>Tidak ada server yang terdaftar.</p>`;
+        if (nodes.length === 0) {
+            html = `<p>Tidak ada node yang terdaftar.</p>`;
         } else {
-            servers.forEach(panel => {
-                html += `<div class="status-item">`;
-                html += `<h3>${panel.panelType.toUpperCase()} PANEL</h3>`;
-                if (panel.details && panel.details.length > 0) {
-                    panel.details.forEach(server => {
-                        html += `
-                            <h4>Server ID: <span>${server.id}</span></h4>
-                            <p>Nama: <span>${server.name}</span></p>
-                            <p>Node: <span>${server.node}</span></p>
-                            <p>RAM: <span>${server.limits.memory} MB</span></p>
-                            <p>CPU: <span>${server.limits.cpu}%</span></p>
-                            <p>Disk: <span>${server.limits.disk} MB</span></p>
-                        `;
-                    });
-                } else {
-                    html += `<p>Tidak ada server di panel ini.</p>`;
-                }
-                html += `</div>`;
+            nodes.forEach(node => {
+                const totalRam = node.attributes.memory;
+                const usedRam = node.attributes.allocated_memory;
+                const freeRam = totalRam - usedRam;
+                const ramPercent = (usedRam / totalRam) * 100;
+                const ramColorClass = ramPercent > 90 ? 'red' : (ramPercent > 70 ? 'yellow' : '');
+
+                const totalDisk = node.attributes.disk;
+                const usedDisk = node.attributes.allocated_disk;
+                const freeDisk = totalDisk - usedDisk;
+                const diskPercent = (usedDisk / totalDisk) * 100;
+                const diskColorClass = diskPercent > 90 ? 'red' : (diskPercent > 70 ? 'yellow' : '');
+
+                html += `
+                    <div class="status-node-card">
+                        <div class="node-header">
+                            <span class="status-indicator"></span>
+                            <h3>${node.attributes.name}</h3>
+                        </div>
+                        <p>Lokasi: <span>${node.attributes.location_id}</span></p>
+                        <br>
+                        <p>RAM: <span>${usedRam}MB / ${totalRam}MB</span></p>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill ${ramColorClass}" style="width: ${ramPercent}%;"></div>
+                        </div>
+                        <br>
+                        <p>Disk: <span>${usedDisk}MB / ${totalDisk}MB</span></p>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill ${diskColorClass}" style="width: ${diskPercent}%;"></div>
+                        </div>
+                        <br>
+                        <p>CPU: <span>${node.attributes.allocated_cpu}% / ${node.attributes.cpu}%</span></p>
+                    </div>
+                `;
             });
         }
         statusContent.innerHTML = html;
     }
-
-    // Panggil API status saat halaman dimuat
-    await fetchServerStatus();
-    setInterval(fetchServerStatus, 30000); // Perbarui setiap 30 detik
-
-    // --- Logika untuk inisialisasi form (hanya jika main-view aktif) ---
+    
+    // --- Sisa kode main.js (Formulir, Popup, dll.) ---
     const YOUR_VERCEL_API_ENDPOINT = '/api/create-panel';
     const CHECK_KEY_API_ENDPOINT = '/api/check-access-key';
     
@@ -201,7 +245,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 keyStatusMessage.textContent = 'Terjadi kesalahan jaringan.';
                 keyStatusMessage.className = 'key-status-message error';
             }
-        }, 500); // Debounce 500ms
+        }, 500);
     });
 
     createPanelForm.addEventListener('submit', async (event) => {
@@ -379,6 +423,6 @@ Domain: ${panelDomainUrl}
                     showToast('error', 'Gagal menyalin semua!');
                 }
             }
-        }
-    });
+        });
+    }
 });
