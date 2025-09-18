@@ -64,45 +64,56 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (nodes.length === 0) {
             html = `<p>Tidak ada node yang terdaftar.</p>`;
         } else {
-            nodes.forEach(node => {
-                const totalRam = node.attributes.memory;
-                const usedRam = node.attributes.allocated_memory;
-                const freeRam = totalRam - usedRam;
-                const ramPercent = (usedRam / totalRam) * 100;
-                const ramColorClass = ramPercent > 90 ? 'red' : (ramPercent > 70 ? 'yellow' : '');
+            nodes.forEach(panel => {
+                html += `<div class="status-node-card">`;
+                html += `<h3>${panel.panelType.toUpperCase()} PANEL</h3>`;
+                if (panel.details && panel.details.length > 0) {
+                    panel.details.forEach(node => {
+                        const totalRam = node.attributes.memory;
+                        const usedRam = node.attributes.allocated_memory;
+                        const freeRam = totalRam - usedRam;
+                        const ramPercent = (usedRam / totalRam) * 100;
+                        const ramColorClass = ramPercent > 90 ? 'red' : (ramPercent > 70 ? 'yellow' : '');
 
-                const totalDisk = node.attributes.disk;
-                const usedDisk = node.attributes.allocated_disk;
-                const freeDisk = totalDisk - usedDisk;
-                const diskPercent = (usedDisk / totalDisk) * 100;
-                const diskColorClass = diskPercent > 90 ? 'red' : (diskPercent > 70 ? 'yellow' : '');
+                        const totalDisk = node.attributes.disk;
+                        const usedDisk = node.attributes.allocated_disk;
+                        const freeDisk = totalDisk - usedDisk;
+                        const diskPercent = (usedDisk / totalDisk) * 100;
+                        const diskColorClass = diskPercent > 90 ? 'red' : (diskPercent > 70 ? 'yellow' : '');
 
-                html += `
-                    <div class="status-node-card">
-                        <div class="node-header">
-                            <span class="status-indicator"></span>
-                            <h3>${node.attributes.name}</h3>
-                        </div>
-                        <p>Lokasi: <span>${node.attributes.location_id}</span></p>
-                        <br>
-                        <p>RAM: <span>${usedRam}MB / ${totalRam}MB</span></p>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar-fill ${ramColorClass}" style="width: ${ramPercent}%;"></div>
-                        </div>
-                        <br>
-                        <p>Disk: <span>${usedDisk}MB / ${totalDisk}MB</span></p>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar-fill ${diskColorClass}" style="width: ${diskPercent}%;"></div>
-                        </div>
-                        <br>
-                        <p>CPU: <span>${node.attributes.allocated_cpu}% / ${node.attributes.cpu}%</span></p>
-                    </div>
-                `;
+                        html += `
+                            <h4>Node: <span>${node.attributes.name}</span></h4>
+                            <p>Lokasi: <span>${node.attributes.location_id}</span></p>
+                            <br>
+                            <p>RAM: <span>${usedRam}MB / ${totalRam}MB</span></p>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill ${ramColorClass}" style="width: ${ramPercent}%;"></div>
+                            </div>
+                            <br>
+                            <p>Disk: <span>${usedDisk}MB / ${totalDisk}MB</span></p>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill ${diskColorClass}" style="width: ${diskPercent}%;"></div>
+                            </div>
+                            <br>
+                            <p>CPU: <span>${node.attributes.allocated_cpu}% / ${node.attributes.cpu}%</span></p>
+                        `;
+                    });
+                } else {
+                    html += `<p>Tidak ada node di panel ini.</p>`;
+                }
+                html += `</div>`;
             });
         }
         statusContent.innerHTML = html;
     }
     
+    // Panggil API status saat halaman status ditampilkan
+    setInterval(() => {
+        if (statusView.style.display !== 'none') {
+            fetchNodeStatus();
+        }
+    }, 30000); // Perbarui setiap 30 detik
+
     // --- Sisa kode main.js (Formulir, Popup, dll.) ---
     const YOUR_VERCEL_API_ENDPOINT = '/api/create-panel';
     const CHECK_KEY_API_ENDPOINT = '/api/check-access-key';
@@ -423,6 +434,6 @@ Domain: ${panelDomainUrl}
                     showToast('error', 'Gagal menyalin semua!');
                 }
             }
-        });
-    }
+        }
+    });
 });
