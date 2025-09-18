@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const response = await fetch('/api/get-node-status');
             const data = await response.json();
             
-            if (data.success) {
+            if (data.success && data.nodes) {
                 renderNodeStatus(data.nodes);
             } else {
                 statusContent.innerHTML = `<p style="color: var(--error-color);">Gagal mengambil data node: ${data.message}</p>`;
@@ -65,50 +65,49 @@ document.addEventListener('DOMContentLoaded', async () => {
             html = `<p>Tidak ada node yang terdaftar.</p>`;
         } else {
             nodes.forEach(panel => {
-                html += `<div class="status-node-card">`;
                 html += `<h3>${panel.panelType.toUpperCase()} PANEL</h3>`;
                 if (panel.details && panel.details.length > 0) {
                     panel.details.forEach(node => {
                         const totalRam = node.attributes.memory;
-                        const usedRam = node.attributes.allocated_memory;
+                        const usedRam = node.attributes.allocated_resources.memory || 0;
                         const ramPercent = (usedRam / totalRam) * 100;
                         const ramColorClass = ramPercent > 90 ? 'red' : (ramPercent > 70 ? 'yellow' : '');
 
                         const totalDisk = node.attributes.disk;
-                        const usedDisk = node.attributes.allocated_disk;
+                        const usedDisk = node.attributes.allocated_resources.disk || 0;
                         const diskPercent = (usedDisk / totalDisk) * 100;
                         const diskColorClass = diskPercent > 90 ? 'red' : (diskPercent > 70 ? 'yellow' : '');
 
                         const totalCpu = node.attributes.cpu;
-                        const usedCpu = node.attributes.allocated_resources.cpu;
+                        const usedCpu = node.attributes.allocated_resources.cpu || 0;
                         const cpuPercent = (usedCpu / totalCpu) * 100;
                         const cpuColorClass = cpuPercent > 90 ? 'red' : (cpuPercent > 70 ? 'yellow' : '');
 
-
                         html += `
-                            <h4>Node: <span>${node.attributes.name}</span></h4>
-                            <p>Lokasi: <span>${node.attributes.location_id}</span></p>
-                            <br>
-                            <p>RAM: <span>${usedRam}MB / ${totalRam}MB</span></p>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar-fill ${ramColorClass}" style="width: ${ramPercent}%;"></div>
-                            </div>
-                            <br>
-                            <p>Disk: <span>${usedDisk}MB / ${totalDisk}MB</span></p>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar-fill ${diskColorClass}" style="width: ${diskPercent}%;"></div>
-                            </div>
-                            <br>
-                            <p>CPU: <span>${usedCpu}% / ${totalCpu}%</span></p>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar-fill ${cpuColorClass}" style="width: ${cpuPercent}%;"></div>
+                            <div class="status-node-card">
+                                <h4>Node: <span>${node.attributes.name}</span></h4>
+                                <p>Lokasi: <span>${node.attributes.location_id}</span></p>
+                                <br>
+                                <p>RAM: <span>${usedRam}MB / ${totalRam}MB</span></p>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill ${ramColorClass}" style="width: ${ramPercent}%;"></div>
+                                </div>
+                                <br>
+                                <p>Disk: <span>${usedDisk}MB / ${totalDisk}MB</span></p>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill ${diskColorClass}" style="width: ${diskPercent}%;"></div>
+                                </div>
+                                <br>
+                                <p>CPU: <span>${usedCpu}% / ${totalCpu}%</span></p>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill ${cpuColorClass}" style="width: ${cpuPercent}%;"></div>
+                                </div>
                             </div>
                         `;
                     });
                 } else {
                     html += `<p>Tidak ada node di panel ini.</p>`;
                 }
-                html += `</div>`;
             });
         }
         statusContent.innerHTML = html;
