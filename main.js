@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const createPanelForm = document.getElementById('createPanelForm');
     const createButton = document.getElementById('createButton');
     const createButtonText = createButton.querySelector('span:first-child');
+    const createButtonIcon = document.getElementById('createButtonIcon');
     const responseMessageDiv = document.getElementById('responseMessage');
     const loadingSpinner = document.getElementById('loadingSpinner');
     const progressBar = createButton.querySelector('.loading-progress-bar');
@@ -132,13 +133,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const key = accessKeyInput.value.trim();
 
         if (key.length === 0) {
-            keyStatusMessage.textContent = '';
+            keyStatusMessage.innerHTML = '';
             keyStatusMessage.className = 'key-status-message';
             return;
         }
 
         debounceTimeout = setTimeout(async () => {
-            keyStatusMessage.textContent = 'Memeriksa Access Key...';
+            keyStatusMessage.innerHTML = '<span class="status-icon"><i class="fas fa-sync-alt fa-spin"></i></span> Memeriksa Access Key...';
             keyStatusMessage.className = 'key-status-message info';
 
             try {
@@ -146,20 +147,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await response.json();
 
                 if (response.ok) {
+                    let iconHtml;
                     if (data.status === 'active') {
-                        keyStatusMessage.textContent = data.message;
+                        iconHtml = '<span class="status-icon"><i class="fas fa-check-circle"></i></span>';
+                        keyStatusMessage.innerHTML = `${iconHtml} ${data.message}`;
                         keyStatusMessage.className = 'key-status-message success';
-                    } else if (data.status === 'banned' || data.status === 'inactive' || data.status === 'not-found') {
-                        keyStatusMessage.textContent = data.message;
+                    } else if (data.status === 'banned') {
+                        iconHtml = '<span class="status-icon"><i class="fas fa-ban"></i></span>';
+                        keyStatusMessage.innerHTML = `${iconHtml} ${data.message}`;
+                        keyStatusMessage.className = 'key-status-message error';
+                    } else if (data.status === 'inactive') {
+                        iconHtml = '<span class="status-icon"><i class="fas fa-times-circle"></i></span>';
+                        keyStatusMessage.innerHTML = `${iconHtml} ${data.message}`;
+                        keyStatusMessage.className = 'key-status-message error';
+                    } else if (data.status === 'not-found') {
+                        iconHtml = '<span class="status-icon"><i class="fas fa-question-circle"></i></span>';
+                        keyStatusMessage.innerHTML = `${iconHtml} ${data.message}`;
                         keyStatusMessage.className = 'key-status-message error';
                     }
                 } else {
-                    keyStatusMessage.textContent = 'Gagal memeriksa status kunci.';
+                    keyStatusMessage.innerHTML = '<span class="status-icon"><i class="fas fa-exclamation-triangle"></i></span> Gagal memeriksa status kunci.';
                     keyStatusMessage.className = 'key-status-message error';
                 }
             } catch (error) {
                 console.error('Error checking key:', error);
-                keyStatusMessage.textContent = 'Terjadi kesalahan jaringan.';
+                keyStatusMessage.innerHTML = '<span class="status-icon"><i class="fas fa-exclamation-circle"></i></span> Terjadi kesalahan jaringan.';
                 keyStatusMessage.className = 'key-status-message error';
             }
         }, 500);
@@ -169,12 +181,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         event.preventDefault();
 
         createButton.disabled = true;
-        createButton.classList.add('loading');
         createButtonText.textContent = 'MEMBUAT PANEL';
-        loadingSpinner.style.display = 'flex';
-        progressBar.style.width = '100%';
-        progressBar.style.opacity = '1';
-
+        createButtonIcon.style.display = 'inline-block';
+        
         responseMessageDiv.innerHTML = '';
         responseMessageDiv.className = '';
 
@@ -186,11 +195,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!selectedPanelType || !username || !hostingPackage) {
             showToast('error', 'Semua bidang harus diisi!');
             createButton.disabled = false;
-            createButton.classList.remove('loading');
             createButtonText.textContent = 'CREATE PANEL';
-            loadingSpinner.style.display = 'none';
-            progressBar.style.width = '0%';
-            progressBar.style.opacity = '0';
+            createButtonIcon.style.display = 'none';
             return;
         }
 
@@ -198,11 +204,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!usernameInput.checkValidity()) {
             showToast('error', `Username tidak valid: ${usernameInput.title}`);
             createButton.disabled = false;
-            createButton.classList.remove('loading');
             createButtonText.textContent = 'CREATE PANEL';
-            loadingSpinner.style.display = 'none';
-            progressBar.style.width = '0%';
-            progressBar.style.opacity = '0';
+            createButtonIcon.style.display = 'none';
             return;
         }
 
@@ -210,11 +213,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!selectedPackage) {
             showToast('error', 'Pilih paket hosting yang valid.');
             createButton.disabled = false;
-            createButton.classList.remove('loading');
             createButtonText.textContent = 'CREATE PANEL';
-            loadingSpinner.style.display = 'none';
-            progressBar.style.width = '0%';
-            progressBar.style.opacity = '0';
+            createButtonIcon.style.display = 'none';
             return;
         }
 
@@ -297,11 +297,8 @@ Domain: ${panelDomainUrl}
             showToast('error', 'Kesalahan koneksi Serverless API!'); 
         } finally {
             createButton.disabled = false;
-            createButton.classList.remove('loading');
             createButtonText.textContent = 'CREATE PANEL';
-            loadingSpinner.style.display = 'none';
-            progressBar.style.width = '0%';
-            progressBar.style.opacity = '0';
+            createButtonIcon.style.display = 'none';
         }
     });
 
